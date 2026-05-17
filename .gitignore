@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# IDEs
+.vscode/
+.idea/
+
+# PlatformIO
+firmware/.pio/
+firmware/.pioenvs/
+firmware/.piolibdeps/
+
+# Segredos do firmware (WiFi/MQTT) — manter fora do repo
+firmware/include/secrets.h
+firmware/platformio.local.ini
+
+# Broker MQTT local para testes de integração
+amqtt.yaml
