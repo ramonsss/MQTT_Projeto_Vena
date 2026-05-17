@@ -11,7 +11,7 @@ class MqttClientConnection:
 
     def start_connection(self):
         mqtt_client = mqtt.Client(client_id=self.__client_name)
-        
+
         # callbacks
         mqtt_client.on_connect = on_connect
         mqtt_client.on_subscribe = on_subscribe
@@ -28,4 +28,7 @@ class MqttClientConnection:
             return True
         except:
             return False
-    
+
+    @property
+    def client(self):
+        return self.__mqtt_client
