@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import BigInteger, DateTime, Float, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -57,3 +57,22 @@ class UserDevice(Base):
 
     user: Mapped["User"] = relationship(back_populates="devices")
     device: Mapped["Device"] = relationship(back_populates="users")
+
+
+class TelemetryRaw(Base):
+    __tablename__ = "telemetry_raw"
+
+    device_id: Mapped[str] = mapped_column(
+        String(32), ForeignKey("devices.id", ondelete="CASCADE"), primary_key=True
+    )
+    ts: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), primary_key=True
+    )
+    ambient_t: Mapped[float | None] = mapped_column(Float, nullable=True)
+    ambient_h: Mapped[float | None] = mapped_column(Float, nullable=True)
+    diss_t: Mapped[float | None] = mapped_column(Float, nullable=True)
+    diss_h: Mapped[float | None] = mapped_column(Float, nullable=True)
+    setpoint: Mapped[float | None] = mapped_column(Float, nullable=True)
+    pid_out: Mapped[float | None] = mapped_column(Float, nullable=True)
+    uptime_ms: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    seq: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
