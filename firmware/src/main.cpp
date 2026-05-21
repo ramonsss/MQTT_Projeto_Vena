@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <ArduinoJson.h>
+#include <time.h>
+#include <esp_mac.h>
 
 #include "config.h"
 #include "SensorManager.h"
@@ -18,10 +20,11 @@ namespace {
                               PID_SLEW_PER_SEC);
     DisplayManager display(LCD_I2C_ADDR, 20, 4);
     OfflineBuffer buffer(OFFLINE_BUFFER_SIZE);
-    MqttPublisher mqtt(WIFI_SSID, WIFI_PASS,
-                       MQTT_HOST, MQTT_PORT,
-                       MQTT_CLIENT_ID,
-                       MQTT_TOPIC_TELEMETRY, MQTT_TOPIC_CMD);
+    MqttPublisher mqtt(WIFI_SSID, WIFI_PASS, MQTT_HOST, MQTT_PORT);
+
+    char deviceId[20];  // "vena-xxxxxxxxxxxx\0"
+    bool ntpReady = false;
+    uint32_t seqCounter = 0;
 
     float lastAmbT = NAN, lastAmbH = NAN;
     float lastDissT = NAN, lastDissH = NAN;
@@ -31,8 +34,27 @@ namespace {
     unsigned long lastTelemetryMs = 0;
 }
 
+static void buildDeviceId() {
+    uint8_t mac[6];
+    esp_efuse_mac_get_default(mac);
+    snprintf(deviceId, sizeof(deviceId), "vena-%02x%02x%02x%02x%02x%02x",
+             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+}
+
+static bool waitForNtp() {
+    configTime(0, 0, NTP_SERVER);
+    unsigned long start = millis();
+    while (time(nullptr) < 1000000000UL) {  // before ~2001 = not synced
+        if (millis() - start > NTP_TIMEOUT_MS) return false;
+        delay(100);
+    }
+    return true;
+}
+
 static String buildTelemetryJson() {
     JsonDocument doc;
+    doc["ts"] = (int64_t)time(nullptr) * 1000LL;
+    doc["seq"] = seqCounter++;
     doc["ambient_t"] = lastAmbT;
     doc["ambient_h"] = lastAmbH;
     doc["diss_t"] = lastDissT;
@@ -58,14 +80,37 @@ void setup() {
     Serial.begin(115200);
     delay(100);
 
+    buildDeviceId();
+    Serial.print("[BOOT] device_id=");
+    Serial.println(deviceId);
+
     Wire.begin(PIN_LCD_SDA, PIN_LCD_SCL);
     sensors.begin();
     peltier.begin();
     display.begin();
-    mqtt.begin();
+
+    mqtt.begin(deviceId);
     mqtt.onCommand(handleCommand);
 
-    Serial.println("[BOOT] cocoa-box pronto");
+    // Wait for WiFi before NTP (NTP needs network)
+    Serial.println("[NTP] aguardando sincronizacao...");
+    unsigned long wifiWait = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - wifiWait < 15000) {
+        delay(200);
+    }
+
+    if (WiFi.status() == WL_CONNECTED) {
+        ntpReady = waitForNtp();
+        if (ntpReady) {
+            Serial.println("[NTP] sincronizado");
+        } else {
+            Serial.println("[NTP] timeout - usando uptime como fallback");
+        }
+    } else {
+        Serial.println("[WIFI] nao conectou - NTP adiado");
+    }
+
+    Serial.println("[BOOT] Vena pronta");
 }
 
 void loop() {

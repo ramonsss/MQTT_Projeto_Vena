@@ -82,17 +82,18 @@
 #ifndef MQTT_PORT
 #define MQTT_PORT 1883
 #endif
-#ifndef MQTT_CLIENT_ID
-#define MQTT_CLIENT_ID "cocoa-box-01"
-#endif
-#ifndef MQTT_TOPIC_TELEMETRY
-#define MQTT_TOPIC_TELEMETRY "cocoa/box01/telemetry"
-#endif
-#ifndef MQTT_TOPIC_CMD
-#define MQTT_TOPIC_CMD "cocoa/box01/cmd"
-#endif
 #ifndef MQTT_BUFFER_SIZE
 #define MQTT_BUFFER_SIZE 512
+#endif
+
+#ifndef NTP_SERVER
+#define NTP_SERVER "pool.ntp.org"
+#endif
+#ifndef NTP_TIMEOUT_MS
+#define NTP_TIMEOUT_MS 10000
+#endif
+#ifndef FW_VERSION
+#define FW_VERSION "1.1.0"
 #endif
 
 #ifndef OFFLINE_BUFFER_SIZE

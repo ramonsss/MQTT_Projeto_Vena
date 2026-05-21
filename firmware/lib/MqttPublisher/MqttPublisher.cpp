@@ -2,16 +2,17 @@
 #include "config.h"
 
 MqttPublisher::MqttPublisher(const char* wifiSsid, const char* wifiPass,
-                             const char* mqttHost, uint16_t mqttPort,
-                             const char* clientId,
-                             const char* topicTelemetry, const char* topicCmd)
+                             const char* mqttHost, uint16_t mqttPort)
     : _wifiSsid(wifiSsid), _wifiPass(wifiPass),
       _mqttHost(mqttHost), _mqttPort(mqttPort),
-      _clientId(clientId),
-      _topicTelemetry(topicTelemetry), _topicCmd(topicCmd),
       _mqtt(_wifiClient) {}
 
-void MqttPublisher::begin() {
+void MqttPublisher::begin(const char* deviceId) {
+    _deviceId = deviceId;
+    _topicTelemetry = String("vena/") + deviceId + "/telemetry";
+    _topicStatus = String("vena/") + deviceId + "/status";
+    _topicCmd = String("vena/") + deviceId + "/cmd";
+
     WiFi.mode(WIFI_STA);
     WiFi.setAutoReconnect(true);
     WiFi.begin(_wifiSsid, _wifiPass);
@@ -35,7 +36,7 @@ void MqttPublisher::loop() {
 
 bool MqttPublisher::publishTelemetry(const String& json) {
     if (!isConnected()) return false;
-    return _mqtt.publish(_topicTelemetry, json.c_str());
+    return _mqtt.publish(_topicTelemetry.c_str(), json.c_str(), false);
 }
 
 void MqttPublisher::onCommand(CommandHandler cb) {
@@ -68,8 +69,19 @@ void MqttPublisher::ensureMqtt() {
     const unsigned long now = millis();
     if ((long)(now - _mqttNextAttemptMs) < 0) return;
 
-    if (_mqtt.connect(_clientId)) {
-        _mqtt.subscribe(_topicCmd);
+    // Configure LWT before connecting
+    _mqtt.disconnect();
+    _mqtt.setServer(_mqttHost, _mqttPort);
+
+    // PubSubClient::connect with will: topic, QoS 1, retain true, payload
+    if (_mqtt.connect(_deviceId.c_str(),
+                      _topicStatus.c_str(), 1, true, "{\"online\":false}")) {
+        // Publish online status (retained)
+        String statusPayload = String("{\"online\":true,\"fw_version\":\"") + FW_VERSION + "\"}";
+        _mqtt.publish(_topicStatus.c_str(), statusPayload.c_str(), true);
+
+        // Subscribe to command topic with QoS 1
+        _mqtt.subscribe(_topicCmd.c_str(), 1);
         _mqttBackoffMs = 1000;
     } else {
         _mqttBackoffMs = min(_mqttBackoffMs * 2, BACKOFF_MAX_MS);
@@ -79,7 +91,7 @@ void MqttPublisher::ensureMqtt() {
 
 void MqttPublisher::handleMessage(char* topic, uint8_t* payload, unsigned int length) {
     if (!_cmdHandler) return;
-    if (strcmp(topic, _topicCmd) != 0) return;
+    if (strcmp(topic, _topicCmd.c_str()) != 0) return;
 
     JsonDocument doc;
     DeserializationError err = deserializeJson(doc, payload, length);

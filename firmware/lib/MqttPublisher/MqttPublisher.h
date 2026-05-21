@@ -12,11 +12,9 @@ public:
     using CommandHandler = std::function<void(const JsonDocument&)>;
 
     MqttPublisher(const char* wifiSsid, const char* wifiPass,
-                  const char* mqttHost, uint16_t mqttPort,
-                  const char* clientId,
-                  const char* topicTelemetry, const char* topicCmd);
+                  const char* mqttHost, uint16_t mqttPort);
 
-    void begin();
+    void begin(const char* deviceId);
     void loop();
     bool publishTelemetry(const String& json);
     void onCommand(CommandHandler cb);
@@ -31,9 +29,11 @@ private:
     const char* _wifiPass;
     const char* _mqttHost;
     uint16_t _mqttPort;
-    const char* _clientId;
-    const char* _topicTelemetry;
-    const char* _topicCmd;
+
+    String _deviceId;
+    String _topicTelemetry;
+    String _topicStatus;
+    String _topicCmd;
 
     WiFiClient _wifiClient;
     PubSubClient _mqtt;
