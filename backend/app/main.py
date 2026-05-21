@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from app.mqtt.worker import MqttWorker
 from app.shared.logging import get_logger
 from app.telemetry.ingest import TelemetryIngestor
+from app.telemetry.routes import router as telemetry_router
 
 log = get_logger(__name__)
 
@@ -44,3 +45,6 @@ app = FastAPI(
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok", "service": "vena-backend"}
+
+
+app.include_router(telemetry_router)
