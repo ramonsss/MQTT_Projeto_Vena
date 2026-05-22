@@ -20,6 +20,17 @@ class Settings(BaseSettings):
     jwt_secret: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60
+    jwt_refresh_expire_days: int = 30
+
+    # Google OAuth
+    google_client_id: str = ""
+
+    # Pairing
+    pairing_secret: str = "change-me-in-production"
+
+    # MQTT JWT
+    mqtt_jwt_expire_minutes: int = 60
+    device_jwt_expire_days: int = 365
 
 
 settings = Settings()
