@@ -24,8 +24,9 @@ async def null_pool_engine():
     asyncpg protocol Futures are attached to the same loop used by all tests.
     Patches every module that holds a direct reference to async_session_factory.
     """
-    # Lazy import: test module is already collected at this point, no circular issue.
-    import tests.test_telemetry_integration as test_module  # noqa: PLC0415
+    # Lazy imports: test modules are already collected at this point.
+    import tests.test_telemetry_integration as telemetry_module  # noqa: PLC0415
+    import tests.test_phase2 as phase2_module  # noqa: PLC0415
 
     engine = create_async_engine(settings.database_url, poolclass=NullPool)
     factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -34,18 +35,21 @@ async def null_pool_engine():
         "db_engine": db_module.engine,
         "db_factory": db_module.async_session_factory,
         "ingest": ingest_module.async_session_factory,
-        "test": test_module.async_session_factory,
+        "telemetry": telemetry_module.async_session_factory,
+        "phase2": phase2_module.async_session_factory,
     }
 
     db_module.engine = engine
     db_module.async_session_factory = factory
     ingest_module.async_session_factory = factory
-    test_module.async_session_factory = factory
+    telemetry_module.async_session_factory = factory
+    phase2_module.async_session_factory = factory
 
     yield factory
 
     db_module.engine = _orig["db_engine"]
     db_module.async_session_factory = _orig["db_factory"]
     ingest_module.async_session_factory = _orig["ingest"]
-    test_module.async_session_factory = _orig["test"]
+    telemetry_module.async_session_factory = _orig["telemetry"]
+    phase2_module.async_session_factory = _orig["phase2"]
     await engine.dispose()
