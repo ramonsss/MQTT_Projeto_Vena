@@ -14,15 +14,19 @@ services:
       retries: 5
 
   mosquitto:
-    image: eclipse-mosquitto:2
+    image: iegomez/mosquitto-go-auth:latest
     restart: unless-stopped
     ports:
       - "1883:1883"
       - "9001:9001"
     volumes:
-      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./mosquitto/mosquitto.conf:/etc/mosquitto/mosquitto.conf
       - mosquitto_data:/mosquitto/data
       - mosquitto_log:/mosquitto/log
+    extra_hosts:
+      # Permite que o container alcance o backend rodando no host
+      # Funciona no Docker Desktop (Windows/Mac) e em Linux com Docker >= 20.10
+      - "host.docker.internal:host-gateway"
 
 volumes:
   pgdata:
