@@ -2,6 +2,9 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+# Máximo representável em Unix timestamp int32 — 2038-01-19T03:14:07Z
+_JWT_MAX_EXP = datetime(2038, 1, 19, 3, 14, 7, tzinfo=timezone.utc)
+
 from jose import jwt
 
 from app.config import settings
@@ -79,7 +82,8 @@ def create_device_jwt(device_id: str) -> str:
         "scope": "device",
         "device_id": device_id,
         "iat": now,
-        "exp": now + timedelta(days=settings.device_jwt_expire_days),
+        "exp": _JWT_MAX_EXP if settings.device_jwt_expire_days == 0
+        else now + timedelta(days=settings.device_jwt_expire_days),
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 

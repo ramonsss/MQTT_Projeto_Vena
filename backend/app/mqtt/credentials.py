@@ -43,8 +43,15 @@ async def get_mqtt_credentials(
 
 def provision_device(device_id: str) -> ProvisionResponse:
     """Issue a long-lived device JWT (scope=device) for NVS storage on ESP32."""
+    from datetime import datetime, timezone
+
     token = create_device_jwt(device_id)
-    return ProvisionResponse(
-        device_jwt=token,
-        expires_in=settings.device_jwt_expire_days * 86400,
-    )
+
+    if settings.device_jwt_expire_days == 0:
+        # No-expiry mode: report seconds until 2038-01-19
+        _max = datetime(2038, 1, 19, 3, 14, 7, tzinfo=timezone.utc)
+        expires_in = int((_max - datetime.now(tz=timezone.utc)).total_seconds())
+    else:
+        expires_in = settings.device_jwt_expire_days * 86400
+
+    return ProvisionResponse(device_jwt=token, expires_in=expires_in)

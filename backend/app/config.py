@@ -30,7 +30,7 @@ class Settings(BaseSettings):
 
     # MQTT JWT
     mqtt_jwt_expire_minutes: int = 60
-    device_jwt_expire_days: int = 365
+    device_jwt_expire_days: int = 0  # 0 = sem expiração (usa 2038-01-19, máximo int32)
 
 
 settings = Settings()
