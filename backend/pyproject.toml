@@ -16,6 +16,7 @@ dependencies = [
     "bcrypt>=4.2",
     "google-auth>=2.29",
     "requests>=2.32",
+    "python-multipart>=0.0.9",
     "httpx>=0.28",
     "loguru>=0.7",
 ]
