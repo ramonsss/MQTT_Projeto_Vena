@@ -20,6 +20,10 @@ public:
     void onCommand(CommandHandler cb);
     bool isConnected() const;
 
+    // Set the device JWT used as MQTT username when MQTT_USE_AUTH == 1.
+    // Call before begin() or any time before the next reconnect attempt.
+    void setJwt(const String& jwt);
+
 private:
     void ensureWifi();
     void ensureMqtt();
@@ -34,6 +38,8 @@ private:
     String _topicTelemetry;
     String _topicStatus;
     String _topicCmd;
+
+    String _jwtCredential;
 
     WiFiClient _wifiClient;
     PubSubClient _mqtt;

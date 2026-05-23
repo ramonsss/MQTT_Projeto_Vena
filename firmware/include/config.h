@@ -106,3 +106,14 @@
 #ifndef DISPLAY_REFRESH_MS
 #define DISPLAY_REFRESH_MS 1000
 #endif
+
+// MQTT authentication via device JWT stored in NVS.
+// Set to 1 in platformio.local.ini once the device has been provisioned:
+//   build_flags = ${common.build_flags} -DMQTT_USE_AUTH=1
+#ifndef MQTT_USE_AUTH
+#define MQTT_USE_AUTH 0
+#endif
+// NVS key used to persist the device JWT across reboots.
+#ifndef MQTT_NVS_JWT_KEY
+#define MQTT_NVS_JWT_KEY "device_jwt"
+#endif

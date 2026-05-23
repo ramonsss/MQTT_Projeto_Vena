@@ -10,6 +10,7 @@
 #include "DisplayManager.h"
 #include "OfflineBuffer.h"
 #include "MqttPublisher.h"
+#include "NvsJwt.h"
 
 namespace {
     SensorManager sensors(PIN_DHT_AMBIENT, PIN_DHT_DISSIPATOR);
@@ -92,7 +93,18 @@ void setup() {
     mqtt.begin(deviceId);
     mqtt.onCommand(handleCommand);
 
-    // Wait for WiFi before NTP (NTP needs network)
+#if MQTT_USE_AUTH
+    {
+        String jwt = nvs_load_jwt();
+        if (jwt.length() > 0) {
+            mqtt.setJwt(jwt);
+            Serial.println("[AUTH] device JWT carregado do NVS");
+        } else {
+            Serial.println("[AUTH] MQTT_USE_AUTH=1 mas nenhum JWT no NVS — broker vai rejeitar a conexao");
+        }
+    }
+#endif
+ (NTP needs network)
     Serial.println("[NTP] aguardando sincronizacao...");
     unsigned long wifiWait = millis();
     while (WiFi.status() != WL_CONNECTED && millis() - wifiWait < 15000) {

@@ -43,6 +43,10 @@ void MqttPublisher::onCommand(CommandHandler cb) {
     _cmdHandler = cb;
 }
 
+void MqttPublisher::setJwt(const String& jwt) {
+    _jwtCredential = jwt;
+}
+
 bool MqttPublisher::isConnected() const {
     return WiFi.status() == WL_CONNECTED && const_cast<PubSubClient&>(_mqtt).connected();
 }
@@ -72,6 +76,13 @@ void MqttPublisher::ensureMqtt() {
     // Configure LWT before connecting
     _mqtt.disconnect();
     _mqtt.setServer(_mqttHost, _mqttPort);
+
+#if MQTT_USE_AUTH
+    // Use device JWT as username; broker validates via /mqtt/auth.
+    if (!_jwtCredential.isEmpty()) {
+        _mqtt.setCredentials(_jwtCredential.c_str(), "");
+    }
+#endif
 
     // PubSubClient::connect with will: topic, QoS 1, retain true, payload
     if (_mqtt.connect(_deviceId.c_str(),
