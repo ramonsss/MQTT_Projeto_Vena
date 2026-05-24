@@ -4,10 +4,11 @@
 //
 // O que faz:
 //  1. Substitui SecureTokenStorage por versão fake (token sempre presente)
-//     → AuthNotifier.build() acha o token e restaura o UserInfo do Drift
 //  2. Semeia o Drift com 3 devices + telemetria realista
-//  3. Sync / MQTT falham silenciosamente (try/catch em _postLoginSetup)
+//  3. Sobrescreve deviceApiProvider com Dio que retorna histórico sintético
+//  4. Sync / MQTT falham silenciosamente (try/catch em _postLoginSetup)
 
+import 'package:dio/dio.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,6 +17,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'app.dart';
 import 'core/auth/secure_token_storage.dart';
 import 'core/db/app_database.dart';
+import 'core/network/device_api.dart';
 
 // ── Fake token storage ───────────────────────────────────────────────────────
 
@@ -120,6 +122,51 @@ Future<void> _seedDatabase(AppDatabase db) async {
   ));
 }
 
+// ── Mock DeviceApi (synthetic history data) ────────────────────────────────
+
+/// Returns 120 synthetic telemetry points spread over the last 24 hours.
+/// Real API calls (listDevices, claimDevice, etc.) throw silently — that's
+/// fine because _postLoginSetup wraps them in try/catch.
+DeviceApi _buildMockDeviceApi() {
+  final dio = Dio();
+  dio.interceptors.add(
+    InterceptorsWrapper(
+      onRequest: (options, handler) {
+        if (options.path.contains('/history')) {
+          final nowSec =
+              DateTime.now().millisecondsSinceEpoch ~/ 1000;
+          final points = List.generate(120, (i) {
+            final ts = nowSec - (119 - i) * 720; // ~24h, one point/12min
+            return {
+              'ts': ts,
+              'ambient_t': 24.0 + (i % 9) * 0.25 - 1.0,
+              'ambient_h': 67.0 + (i % 7) * 0.8 - 2.8,
+              'diss_t': 22.0 + (i % 6) * 0.2 - 0.6,
+              'diss_h': 71.0 + (i % 5) * 0.4,
+              'setpoint': 23.0,
+              'pid_out': 10.0 + (i % 8) * 1.5,
+            };
+          });
+          handler.resolve(Response(
+            requestOptions: options,
+            data: points,
+            statusCode: 200,
+          ));
+        } else {
+          // Reject other calls — _postLoginSetup handles errors gracefully.
+          handler.reject(
+            DioException(
+              requestOptions: options,
+              message: 'mock: endpoint not available',
+            ),
+          );
+        }
+      },
+    ),
+  );
+  return DeviceApi(dio);
+}
+
 // ── Entry point ──────────────────────────────────────────────────────────────
 
 void main() async {
@@ -134,6 +181,7 @@ void main() async {
         appDatabaseProvider.overrideWithValue(db),
         secureTokenStorageProvider
             .overrideWithValue(_MockSecureStorage()),
+        deviceApiProvider.overrideWithValue(_buildMockDeviceApi()),
       ],
       child: const VenaApp(),
     ),

@@ -58,6 +58,14 @@ class DeviceDetailScreen extends ConsumerWidget {
             ConnectionBadge(online: isOnline),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.show_chart_rounded),
+            color: VenaColors.textPrimary,
+            tooltip: 'Histórico',
+            onPressed: () => context.push('/devices/$deviceId/history'),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(

@@ -7,6 +7,7 @@ import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/splash_screen.dart';
 import '../features/devices/presentation/devices_screen.dart';
 import '../features/live/presentation/device_detail_screen.dart';
+import '../features/history/presentation/history_screen.dart';
 
 /// Bridges [authNotifierProvider] (Riverpod) → [Listenable] (GoRouter).
 ///
@@ -69,8 +70,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: 'history',
-                builder: (_, state) => _PlaceholderScreen(
-                  title: 'History ${state.pathParameters['id']}',
+                builder: (_, state) => HistoryScreen(
+                  deviceId: state.pathParameters['id']!,
                 ),
               ),
             ],
