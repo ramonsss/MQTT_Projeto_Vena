@@ -19,8 +19,8 @@ dependencies:
   go_router: ^14.2.0
 
   # Local database (Drift / SQLite)
-  drift: ^2.18.0
-  drift_flutter: ^0.2.1
+  drift: ^2.22.0
+  drift_flutter: ^0.2.7
   sqlite3_flutter_libs: ^0.5.0
 
   # Networking
@@ -54,10 +54,10 @@ dev_dependencies:
 
   # Code generation
   build_runner: ^2.4.9
-  drift_dev: ^2.18.0
+  drift_dev: ^2.22.0
   riverpod_generator: ^2.4.0
-  riverpod_lint: ^2.3.10
-  custom_lint: ^0.6.4
+  riverpod_lint: ^2.6.0
+  custom_lint: ^0.7.1
 
 flutter:
   uses-material-design: true

@@ -17,7 +17,7 @@ android {
     defaultConfig {
         applicationId = "farm.vena.vena_app"
         // flutter_secure_storage requires API 23+; mobile_scanner requires API 21+
-        minSdk = 23
+        minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

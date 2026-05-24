@@ -19,7 +19,7 @@
     </domain-config>
 
     <!-- Allow cleartext for the full private LAN (physical device) -->
-    <!-- Use --dart-define=BACKEND_URL=http://192.168.x.x:8000 when running -->
+    <!-- Pass BACKEND_URL dart-define with your LAN IP when running on a device -->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="false">192.168.1.0</domain>
         <domain includeSubdomains="false">192.168.0.0</domain>
