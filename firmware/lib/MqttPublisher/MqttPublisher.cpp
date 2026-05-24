@@ -79,8 +79,10 @@ void MqttPublisher::ensureMqtt() {
 
 #if MQTT_USE_AUTH
     // Use device JWT as username; broker validates via /mqtt/auth.
+    // mosquitto-go-auth rejects empty passwords before calling the HTTP backend,
+    // so a fixed non-empty placeholder is required alongside the JWT.
     if (!_jwtCredential.isEmpty()) {
-        _mqtt.setCredentials(_jwtCredential.c_str(), "");
+        _mqtt.setCredentials(_jwtCredential.c_str(), "vena");
     }
 #endif
 

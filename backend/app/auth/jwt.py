@@ -69,6 +69,22 @@ def create_mqtt_token(user: User, device_ids: list[str]) -> str:
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
+def create_backend_token() -> str:
+    """Issue a short-lived JWT for the backend MQTT worker to authenticate with the broker.
+
+    Called at startup and on each reconnect so the token is always fresh.
+    scope=backend is allowed by /mqtt/acl to subscribe to all vena/* topics.
+    """
+    now = _now()
+    payload: dict[str, Any] = {
+        "sub": "vena-backend",
+        "scope": "backend",
+        "iat": now,
+        "exp": now + timedelta(minutes=settings.mqtt_jwt_expire_minutes),
+    }
+    return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+
+
 def create_device_jwt(device_id: str) -> str:
     """Issue a long-lived JWT for a device to authenticate with the broker.
 

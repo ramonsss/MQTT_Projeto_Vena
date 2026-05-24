@@ -4,6 +4,7 @@ import asyncio
 
 import paho.mqtt.client as paho
 
+from app.auth.jwt import create_backend_token
 from app.config import settings
 from app.shared.logging import get_logger
 
@@ -31,8 +32,19 @@ class MqttWorker:
         self._client.on_message = self._on_message
         self._backoff = 1.0
 
+    def _refresh_jwt(self) -> None:
+        """Generate a fresh backend JWT and set it as the MQTT username.
+
+        mosquitto-go-auth rejects connections with an empty password before
+        it ever calls the HTTP backend, so we pass a fixed placeholder.
+        The /mqtt/auth endpoint only reads the JWT from `username`.
+        """
+        token = create_backend_token()
+        self._client.username_pw_set(token, "vena")
+
     def start(self) -> None:
         log.info("MQTT worker connecting to {}:{}", settings.mqtt_host, settings.mqtt_port)
+        self._refresh_jwt()
         self._client.connect_async(settings.mqtt_host, settings.mqtt_port)
         self._client.loop_start()
 
@@ -67,6 +79,8 @@ class MqttWorker:
     ) -> None:
         log.warning("MQTT disconnected (rc={}), will reconnect with backoff {:.1f}s", reason_code, self._backoff)
         self._backoff = min(self._backoff * 2, 30.0)
+        # Refresh JWT so the next auto-reconnect attempt uses a non-expired token.
+        self._refresh_jwt()
 
     def _on_message(
         self,

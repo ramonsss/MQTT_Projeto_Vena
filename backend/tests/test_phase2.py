@@ -29,7 +29,7 @@ from jose import jwt as jose_jwt
 from sqlalchemy import select, text
 
 from app.auth.google import GoogleUserInfo
-from app.auth.jwt import create_access_token, create_mqtt_token
+from app.auth.jwt import create_access_token, create_backend_token, create_mqtt_token
 from app.config import settings
 from app.db.models import Device, RefreshToken, User, UserDevice
 from app.db.session import async_session_factory
@@ -342,6 +342,24 @@ async def test_h8_mqtt_acl_device_not_in_claim_returns_403():
         )
 
     assert r.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_h8_mqtt_acl_backend_scope_allows_all_vena_topics():
+    token = create_backend_token()
+
+    async with _client() as client:
+        r = await client.post(
+            "/mqtt/acl",
+            data={
+                "username": token,
+                "topic": "vena/any-device/telemetry",
+                "clientid": "vena-backend",
+                "acc": "1",
+            },
+        )
+
+    assert r.status_code == 200
 
 
 # ── H9: telemetry_raw is a TimescaleDB hypertable ────────────────────────

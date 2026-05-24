@@ -46,6 +46,10 @@ async def mqtt_acl(form: AclForm = Depends()) -> Response:
     topic_device_id = parts[1]
     scope = payload.get("scope")
 
+    if scope == "backend":
+        # Backend MQTT worker — allowed to subscribe to all vena/* topics.
+        return _200 if parts[0] == "vena" else _403
+
     if scope == "app":
         allowed: list[str] = payload.get("devices", [])
         return _200 if topic_device_id in allowed else _403

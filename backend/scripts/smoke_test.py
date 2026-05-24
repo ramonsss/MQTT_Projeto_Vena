@@ -43,7 +43,52 @@ BASE_URL = "http://localhost:8000"
 BROKER_HOST = "localhost"
 BROKER_PORT = 1883
 
-# ── Helpers ──────────────────────────────────────────────────────────────────
+# ── Pre-flight checks ────────────────────────────────────────────────────────
+
+
+def _preflight() -> None:
+    """Abort early with actionable messages if the required services are down."""
+    import socket
+
+    errors: list[str] = []
+
+    # Backend reachable on localhost:8000
+    try:
+        s = socket.create_connection(("localhost", 8000), timeout=2)
+        s.close()
+    except OSError:
+        errors.append(
+            "Backend not reachable at localhost:8000.\n"
+            "  Start with: venv\\Scripts\\uvicorn app.main:app --reload --host 0.0.0.0"
+        )
+
+    # Backend must also be reachable from Docker (host.docker.internal:8000)
+    try:
+        s = socket.create_connection(("host.docker.internal", 8000), timeout=2)
+        s.close()
+    except OSError:
+        errors.append(
+            "Backend not reachable at host.docker.internal:8000 (needed by the broker).\n"
+            "  Restart uvicorn binding all interfaces: --host 0.0.0.0"
+        )
+
+    # MQTT broker reachable on localhost:1883
+    try:
+        s = socket.create_connection(("localhost", 1883), timeout=2)
+        s.close()
+    except OSError:
+        errors.append(
+            "MQTT broker not reachable at localhost:1883.\n"
+            "  Start infra: cd infra && docker-compose up -d"
+        )
+
+    if errors:
+        print("\n\u274c Pre-flight failed:\n")
+        for e in errors:
+            print(f"  \u2022 {e}\n")
+        sys.exit(1)
+
+
 
 
 def _make_token(user_id: str, email: str) -> str:
@@ -126,7 +171,7 @@ def _mqtt_connect_test(token: str, expected_rc: int = 0) -> int:
     except AttributeError:
         c = paho.Client(client_id=f"smoke-{uuid.uuid4().hex[:6]}")
 
-    c.username_pw_set(token, "")
+    c.username_pw_set(token, "vena")  # go-auth rejects empty password before calling HTTP backend
     c.on_connect = on_connect
     try:
         c.connect(BROKER_HOST, BROKER_PORT, keepalive=5)
@@ -144,6 +189,7 @@ def _mqtt_connect_test(token: str, expected_rc: int = 0) -> int:
 
 
 async def main() -> None:
+    _preflight()
     print("\n====  Vena Phase 2 — Smoke Test  ====\n")
 
     run_id = uuid.uuid4().hex[:8]
@@ -185,7 +231,15 @@ async def main() -> None:
             json={"pairing_code": "BADCODE1"},
             headers=headers,
         )
-        check("Wrong pairing code → 409 (already claimed)", r_bad.status_code == 409, r_bad.text)
+        check("Wrong pairing code → 403", r_bad.status_code == 403, r_bad.text)
+
+        print("      POST /devices/{id}/claim — correct code again → 409 (duplicate)…")
+        r_dup = await client.post(
+            f"/devices/{device_id}/claim",
+            json={"pairing_code": pairing_code},
+            headers=headers,
+        )
+        check("Re-claim same device → 409", r_dup.status_code == 409, r_dup.text)
 
         # ── 4: List devices (claimed) ───────────────────────────────────────
         print("[4/8] GET /devices — expect claimed device…")
