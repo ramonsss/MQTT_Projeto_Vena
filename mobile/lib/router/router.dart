@@ -6,6 +6,7 @@ import '../core/auth/auth_provider.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/splash_screen.dart';
 import '../features/devices/presentation/devices_screen.dart';
+import '../features/live/presentation/device_detail_screen.dart';
 
 /// Bridges [authNotifierProvider] (Riverpod) → [Listenable] (GoRouter).
 ///
@@ -62,8 +63,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: ':id',
-            builder: (_, state) => _PlaceholderScreen(
-              title: 'Device ${state.pathParameters['id']}',
+            builder: (_, state) => DeviceDetailScreen(
+              deviceId: state.pathParameters['id']!,
             ),
             routes: [
               GoRoute(

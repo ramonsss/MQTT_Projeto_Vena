@@ -99,6 +99,18 @@ Future<void> _seedDatabase(AppDatabase db) async {
     pidOut: const Value(0.0),
     online: const Value(false),
   ));
+  // Ring buffer para o mini-chart do device 2
+  for (var i = 60; i >= 0; i--) {
+    final ts = now - 2 * 60 * 60 * 1000 - i * 60 * 1000;
+    await db.telemetryDao.insertTelemetryCache(TelemetryCacheCompanion(
+      deviceId: const Value('vena-d4e5f6'),
+      ts: Value(ts),
+      ambientT: Value(21.8 - (i % 6) * 0.2 + 0.4),
+      ambientH: Value(61.0 + (i % 4) * 0.8),
+      dissT: Value(20.5 - (i % 5) * 0.15),
+      dissH: Value(65.0 + (i % 3) * 0.6),
+    ));
+  }
 
   // ── Device 3 — recém pareado, sem telemetria ainda ───────────────────────
   await db.deviceDao.upsertDevice(DevicesCompanion(
