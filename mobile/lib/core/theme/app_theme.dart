@@ -16,8 +16,8 @@ class VenaTheme {
     );
     return base.copyWith(
       scaffoldBackgroundColor: VenaColors.background,
-      appBarTheme: const AppBarTheme(
-        backgroundColor: VenaColors.surface,
+      appBarTheme: AppBarTheme(
+        backgroundColor: VenaColors.background,
         foregroundColor: VenaColors.textPrimary,
         elevation: 0,
         centerTitle: true,
