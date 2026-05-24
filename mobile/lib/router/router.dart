@@ -8,6 +8,7 @@ import '../features/auth/presentation/splash_screen.dart';
 import '../features/devices/presentation/devices_screen.dart';
 import '../features/live/presentation/device_detail_screen.dart';
 import '../features/history/presentation/history_screen.dart';
+import '../features/pairing/presentation/pair_screen.dart';
 
 /// Bridges [authNotifierProvider] (Riverpod) → [Listenable] (GoRouter).
 ///
@@ -60,7 +61,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: 'pair',
-            builder: (_, __) => const _PlaceholderScreen(title: 'Pair Device'),
+            builder: (_, __) => const PairScreen(),
           ),
           GoRoute(
             path: ':id',
@@ -82,24 +83,4 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
-/// Temporary placeholder used until each feature screen is implemented.
-class _PlaceholderScreen extends StatelessWidget {
-  const _PlaceholderScreen({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(
-        child: Text(
-          '$title\n(coming in a future phase)',
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-      ),
-    );
-  }
-}
 
