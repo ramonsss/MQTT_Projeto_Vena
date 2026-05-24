@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../core/auth/auth_provider.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/splash_screen.dart';
+import '../features/devices/presentation/devices_screen.dart';
 
 /// Bridges [authNotifierProvider] (Riverpod) → [Listenable] (GoRouter).
 ///
@@ -53,7 +54,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/devices',
-        builder: (_, __) => const _PlaceholderScreen(title: 'Devices'),
+        builder: (_, __) => const DevicesScreen(),
         routes: [
           GoRoute(
             path: 'pair',
