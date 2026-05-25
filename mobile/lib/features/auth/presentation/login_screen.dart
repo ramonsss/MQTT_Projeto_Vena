@@ -21,18 +21,23 @@ class LoginScreen extends ConsumerWidget {
     final authState = ref.watch(authNotifierProvider);
 
     // Mostra snackbar se o login falhar.
-    ref.listen(authNotifierProvider, (_, next) {
-      if (next.hasError) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Falha no login. Tente novamente.',
-              style: VenaTypography.bodySmall.copyWith(color: Colors.white),
-            ),
-            backgroundColor: VenaColors.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+    ref.listen(authNotifierProvider, (prev, next) {
+      if (next.hasError && !(prev?.hasError ?? false)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context)
+            ..clearSnackBars()
+            ..showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Falha no login. Tente novamente.',
+                  style: VenaTypography.bodySmall.copyWith(color: Colors.white),
+                ),
+                backgroundColor: VenaColors.error,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+        });
       }
     });
 
