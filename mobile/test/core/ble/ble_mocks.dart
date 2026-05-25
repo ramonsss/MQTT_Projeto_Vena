@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:vena_app/core/ble/ble_models.dart';

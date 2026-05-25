@@ -1,10 +1,7 @@
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:vena_app/core/ble/ble_models.dart';
-import 'package:vena_app/core/ble/ble_service.dart';
 
 import 'ble_mocks.dart';
 
