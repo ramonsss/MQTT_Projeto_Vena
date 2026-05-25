@@ -1,25 +1,35 @@
-// L2 — PairingProvider: manages the 3-step pairing wizard state.
+// L2 — PairingProvider: BLE-enabled pairing wizard state machine.
 //
 // Steps:
-//   1. idle       — waiting for QR scan
-//   2. confirming — QR parsed, showing device_id + pairing_code for confirmation
-//   3. claiming   — HTTP POST in progress
-//   4. naming     — claim succeeded, user types optional alias
-//   5. success    — device paired (and optionally renamed)
-//   6. error      — claim failed
+//   idle → confirming → bleScan → bleConnecting
+//         → provisioning (if device lacks Wi-Fi)
+//         → claiming → naming → success | error
 
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../core/ble/ble_models.dart';
+import '../../../core/ble/ble_provider.dart';
 import '../../../core/sync/device_sync_service.dart';
 import '../../devices/application/device_actions_provider.dart';
+import 'provisioning_service.dart';
 
 part 'pairing_provider.g.dart';
 
-// ── State ─────────────────────────────────────────────────────────────────────
-
-enum PairingStep { idle, confirming, claiming, naming, success, error }
+enum PairingStep {
+  idle,
+  confirming,
+  bleScan,
+  bleConnecting,
+  provisioning,
+  claiming,
+  naming,
+  success,
+  error,
+}
 
 class PairingState {
   const PairingState({
@@ -28,6 +38,9 @@ class PairingState {
     this.pairingCode,
     this.alias = '',
     this.errorMessage,
+    this.discoveredDevices = const [],
+    this.selectedBleDeviceId,
+    this.selectedBleDeviceName,
   });
 
   final PairingStep step;
@@ -35,6 +48,9 @@ class PairingState {
   final String? pairingCode;
   final String alias;
   final String? errorMessage;
+  final List<DiscoveredVenaDevice> discoveredDevices;
+  final String? selectedBleDeviceId;
+  final String? selectedBleDeviceName;
 
   PairingState copyWith({
     PairingStep? step,
@@ -42,6 +58,9 @@ class PairingState {
     String? pairingCode,
     String? alias,
     String? errorMessage,
+    List<DiscoveredVenaDevice>? discoveredDevices,
+    String? selectedBleDeviceId,
+    String? selectedBleDeviceName,
   }) =>
       PairingState(
         step: step ?? this.step,
@@ -49,24 +68,30 @@ class PairingState {
         pairingCode: pairingCode ?? this.pairingCode,
         alias: alias ?? this.alias,
         errorMessage: errorMessage,
+        discoveredDevices: discoveredDevices ?? this.discoveredDevices,
+        selectedBleDeviceId: selectedBleDeviceId ?? this.selectedBleDeviceId,
+        selectedBleDeviceName:
+            selectedBleDeviceName ?? this.selectedBleDeviceName,
       );
 }
 
-// ── Notifier ──────────────────────────────────────────────────────────────────
-
-/// QR payload format (either is accepted):
-///   • `vena://<deviceId>?code=<pairingCode>` (URI)
-///   • `{"device_id":"...","pairing_code":"..."}` (JSON)
 @riverpod
 class PairingNotifier extends _$PairingNotifier {
-  @override
-  PairingState build() => const PairingState();
+  StreamSubscription<DiscoveredVenaDevice>? _scanSub;
 
-  // ── Step 1: parse QR ────────────────────────────────────────────────────
+  @override
+  PairingState build() {
+    ref.onDispose(() {
+      _scanSub?.cancel();
+      ref.read(bleServiceProvider).stopScan();
+    });
+    return const PairingState();
+  }
+
+  // ── Step 1: QR ──────────────────────────────────────────────────────────
 
   void onQrDetected(String raw) {
     if (state.step != PairingStep.idle) return;
-
     final parsed = _parseQr(raw);
     if (parsed == null) {
       state = state.copyWith(
@@ -76,7 +101,6 @@ class PairingNotifier extends _$PairingNotifier {
       );
       return;
     }
-
     state = state.copyWith(
       step: PairingStep.confirming,
       deviceId: parsed.$1,
@@ -84,16 +108,127 @@ class PairingNotifier extends _$PairingNotifier {
     );
   }
 
-  // ── Step 2: confirm & claim ──────────────────────────────────────────────
+  // ── Step 2: BLE Scan ────────────────────────────────────────────────────
 
-  Future<void> confirmClaim() async {
-    final id = state.deviceId;
-    final code = state.pairingCode;
-    if (id == null || code == null) return;
+  void startBleScan() {
+    state = state.copyWith(
+      step: PairingStep.bleScan,
+      discoveredDevices: [],
+    );
+    _scanSub?.cancel();
+    _scanSub = ref
+        .read(bleServiceProvider)
+        .scanForVenaDevices(timeout: const Duration(seconds: 15))
+        .listen(
+      (device) {
+        final updated = [
+          ...state.discoveredDevices.where((d) => d.bleId != device.bleId),
+          device,
+        ]..sort((a, b) => b.rssi.compareTo(a.rssi));
+        state = state.copyWith(discoveredDevices: updated);
+      },
+      onError: (e) {
+        debugPrint('[Pairing] scan error: $e');
+        state = state.copyWith(
+          step: PairingStep.error,
+          errorMessage:
+              'Erro ao escanear. Verifique as permissões Bluetooth.',
+        );
+      },
+    );
+  }
+
+  void retryBleScan() => startBleScan();
+
+  // ── Step 3: BLE Connect ─────────────────────────────────────────────────
+
+  Future<void> selectDevice(String bleDeviceId, String bleDeviceName) async {
+    _scanSub?.cancel();
+    _scanSub = null;
+    ref.read(bleServiceProvider).stopScan();
+
+    state = state.copyWith(
+      step: PairingStep.bleConnecting,
+      selectedBleDeviceId: bleDeviceId,
+      selectedBleDeviceName: bleDeviceName,
+    );
+
+    final completer = Completer<void>();
+    StreamSubscription? connSub;
+
+    // Register listener BEFORE connect to avoid missing the event
+    connSub = ref.read(bleServiceProvider).connectionState.listen((status) {
+      if (completer.isCompleted) return;
+      if (status == BleConnectionStatus.connected) {
+        connSub?.cancel();
+        completer.complete();
+      } else if (status == BleConnectionStatus.disconnected) {
+        connSub?.cancel();
+        completer.completeError(Exception('Connection failed'));
+      }
+    });
+
+    ref.read(bleServiceProvider).connectToDevice(bleDeviceId);
+
+    try {
+      await completer.future.timeout(const Duration(seconds: 15));
+
+      final wifiStatus =
+          await ref.read(bleServiceProvider).readWifiStatus();
+
+      if (wifiStatus?.connected == true) {
+        await _doClaim();
+      } else {
+        state = state.copyWith(step: PairingStep.provisioning);
+      }
+    } catch (e) {
+      debugPrint('[Pairing] connect error: $e');
+      state = state.copyWith(
+        step: PairingStep.error,
+        errorMessage:
+            'Falha ao conectar. Aproxime o dispositivo e tente novamente.',
+      );
+    }
+  }
+
+  // ── Step 4: Wi-Fi Provisioning ──────────────────────────────────────────
+
+  Future<void> submitProvisioning(String ssid, String psk) async {
+    final deviceId = state.deviceId;
+    final pairingCode = state.pairingCode;
+    if (deviceId == null || pairingCode == null) return;
 
     state = state.copyWith(step: PairingStep.claiming);
     try {
-      await ref.read(deviceActionsProvider.notifier).claimDevice(id, code);
+      await ref.read(provisioningServiceProvider).provisionDevice(
+            deviceId: deviceId,
+            pairingCode: pairingCode,
+            ssid: ssid,
+            psk: psk,
+          );
+      await _doClaim();
+    } catch (e) {
+      state = state.copyWith(
+        step: PairingStep.error,
+        errorMessage: _friendlyError(e),
+      );
+    }
+  }
+
+  Future<void> skipProvisioning() async => _doClaim();
+
+  // ── Step 5: Claim ───────────────────────────────────────────────────────
+
+  Future<void> _doClaim() async {
+    final deviceId = state.deviceId;
+    final pairingCode = state.pairingCode;
+    if (deviceId == null || pairingCode == null) return;
+
+    state = state.copyWith(step: PairingStep.claiming);
+    try {
+      await ref
+          .read(deviceActionsProvider.notifier)
+          .claimDevice(deviceId, pairingCode);
       state = state.copyWith(step: PairingStep.naming);
     } catch (e) {
       state = state.copyWith(
@@ -103,34 +238,36 @@ class PairingNotifier extends _$PairingNotifier {
     }
   }
 
-  // ── Step 3: optional alias ───────────────────────────────────────────────
+  // ── Step 6: Name ────────────────────────────────────────────────────────
 
   Future<void> finishWithAlias(String alias) async {
     final id = state.deviceId;
     if (id == null) return;
-
     if (alias.trim().isNotEmpty) {
       await ref
           .read(deviceActionsProvider.notifier)
           .renameDevice(id, alias.trim());
     }
-    // Best-effort final sync.
     await ref
         .read(deviceSyncServiceProvider)
         .syncDeviceList()
         .catchError((_) {});
-
     state = state.copyWith(step: PairingStep.success, alias: alias.trim());
   }
 
   // ── Reset ────────────────────────────────────────────────────────────────
 
-  void reset() => state = const PairingState();
+  void reset() {
+    _scanSub?.cancel();
+    _scanSub = null;
+    ref.read(bleServiceProvider).stopScan();
+    unawaited(ref.read(bleServiceProvider).disconnectDevice());
+    state = const PairingState();
+  }
 
-  // ── Private helpers ──────────────────────────────────────────────────────
+  // ── Helpers ──────────────────────────────────────────────────────────────
 
   (String, String)? _parseQr(String raw) {
-    // URI format: vena://<deviceId>?code=<pairingCode>
     final uri = Uri.tryParse(raw);
     if (uri != null && uri.scheme == 'vena') {
       final deviceId =
@@ -143,7 +280,6 @@ class PairingNotifier extends _$PairingNotifier {
         return (deviceId, code);
       }
     }
-    // JSON format
     try {
       final decoded = jsonDecode(raw);
       if (decoded is Map) {
@@ -162,11 +298,17 @@ class PairingNotifier extends _$PairingNotifier {
 
   String _friendlyError(Object e) {
     final msg = e.toString().toLowerCase();
+    if (msg.contains('timeout')) {
+      return 'Dispositivo não conectou ao Wi-Fi a tempo. Verifique as credenciais.';
+    }
     if (msg.contains('409') || msg.contains('conflict')) {
       return 'Este dispositivo já está pareado com outra conta.';
     }
     if (msg.contains('404')) {
       return 'Dispositivo não encontrado. Verifique o código QR.';
+    }
+    if (msg.contains('ble write')) {
+      return 'Falha ao enviar credenciais via Bluetooth. Aproxime o dispositivo.';
     }
     if (msg.contains('socket') ||
         msg.contains('network') ||

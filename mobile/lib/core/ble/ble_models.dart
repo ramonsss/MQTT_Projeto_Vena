@@ -2,6 +2,41 @@
 
 enum BleConnectionStatus { scanning, connecting, connected, disconnected }
 
+/// A Vena device discovered during BLE scan.
+class DiscoveredVenaDevice {
+  const DiscoveredVenaDevice({
+    required this.bleId,
+    required this.name,
+    required this.rssi,
+  });
+
+  final String bleId;
+  final String name;
+  final int rssi;
+}
+
+/// Parsed Wi-Fi status from the `wifi_status` BLE characteristic.
+class BleWifiStatus {
+  const BleWifiStatus({
+    required this.connected,
+    this.ssid,
+    this.ip,
+    this.rssi,
+  });
+
+  final bool connected;
+  final String? ssid;
+  final String? ip;
+  final int? rssi;
+
+  factory BleWifiStatus.fromJson(Map<String, dynamic> json) => BleWifiStatus(
+        connected: json['connected'] as bool? ?? false,
+        ssid: json['ssid'] as String?,
+        ip: json['ip'] as String?,
+        rssi: json['rssi'] as int?,
+      );
+}
+
 /// Parsed live telemetry from BLE notify characteristic.
 class BleTelemetry {
   const BleTelemetry({

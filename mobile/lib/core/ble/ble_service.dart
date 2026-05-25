@@ -61,6 +61,19 @@ class BleService {
     );
   }
 
+  /// Scans for Vena BLE devices, returning a stream of [DiscoveredVenaDevice].
+  /// Filtered by service UUID; devices are further filtered by `Vena-` prefix.
+  Stream<DiscoveredVenaDevice> scanForVenaDevices({
+    Duration timeout = const Duration(seconds: 15),
+  }) {
+    _emitState(BleConnectionStatus.scanning);
+    final serviceId = Uuid.parse(BleUuids.serviceUuid);
+    return _ble
+        .scanForDevices(withServices: [serviceId], scanMode: ScanMode.lowLatency)
+        .timeout(timeout, onTimeout: (sink) => sink.close())
+        .map((d) => DiscoveredVenaDevice(bleId: d.id, name: d.name, rssi: d.rssi));
+  }
+
   /// Stops an ongoing scan.
   void stopScan() {
     _scanSub?.cancel();
@@ -161,6 +174,24 @@ class BleService {
       return utf8.decode(bytes).trim();
     } catch (e) {
       debugPrint('[BLE] read pairing code error: $e');
+      return null;
+    }
+  }
+
+  /// Reads the wifi_status characteristic.
+  Future<BleWifiStatus?> readWifiStatus() async {
+    if (_connectedDeviceId == null) return null;
+    try {
+      final char = QualifiedCharacteristic(
+        serviceId: Uuid.parse(BleUuids.serviceUuid),
+        characteristicId: Uuid.parse(BleUuids.wifiStatusChar),
+        deviceId: _connectedDeviceId!,
+      );
+      final bytes = await _ble.readCharacteristic(char);
+      final json = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
+      return BleWifiStatus.fromJson(json);
+    } catch (e) {
+      debugPrint('[BLE] read wifi_status error: $e');
       return null;
     }
   }

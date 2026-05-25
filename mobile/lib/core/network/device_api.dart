@@ -22,6 +22,15 @@ class DeviceApi {
         data: {'pairing_code': pairingCode},
       );
 
+  /// Validates pairing_code and returns a device JWT for BLE provisioning.
+  Future<String> provisionDevice(String deviceId, String pairingCode) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/devices/provision',
+      data: {'device_id': deviceId, 'pairing_code': pairingCode},
+    );
+    return response.data!['device_jwt'] as String;
+  }
+
   Future<void> updateAlias(String deviceId, String alias) => _dio.patch(
         '/devices/$deviceId',
         data: {'alias': alias},

@@ -1,8 +1,12 @@
-// L1 — PairScreen: 3-step QR-pairing wizard.
+// L1 — PairScreen: BLE-enabled pairing wizard.
 //
-// Step 1 — Scan  : fullscreen MobileScanner + overlay + instruction text
-// Step 2 — Confirm: device_id + pairing_code preview → "Confirmar"
-// Step 3 — Name  : optional alias field → "Salvar" → pop to /devices
+// Step 1 — Scan QR   : fullscreen MobileScanner
+// Step 2 — Confirm   : show device_id + pairing_code
+// Step 3 — BLE Scan  : list nearby Vena devices
+// Step 4 — Connecting: progress indicator
+// Step 5 — Provision : Wi-Fi credentials form (if needed)
+// Step 6 — Claiming  : progress indicator
+// Step 7 — Name      : optional alias → /devices
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,6 +19,9 @@ import '../../../design_system/tokens.dart';
 import '../../../design_system/typography.dart';
 import '../application/pairing_provider.dart';
 import '../../devices/application/devices_provider.dart';
+import 'widgets/ble_scan_step.dart';
+import 'widgets/pairing_success_step.dart';
+import 'widgets/wifi_provision_step.dart';
 
 class PairScreen extends ConsumerStatefulWidget {
   const PairScreen({super.key});
@@ -24,8 +31,6 @@ class PairScreen extends ConsumerStatefulWidget {
 }
 
 class _PairScreenState extends ConsumerState<PairScreen> {
-  final _aliasController = TextEditingController();
-  final _aliasFocus = FocusNode();
   late final MobileScannerController _scannerController;
 
   @override
@@ -38,8 +43,6 @@ class _PairScreenState extends ConsumerState<PairScreen> {
 
   @override
   void dispose() {
-    _aliasController.dispose();
-    _aliasFocus.dispose();
     _scannerController.dispose();
     super.dispose();
   }
@@ -72,13 +75,7 @@ class _PairScreenState extends ConsumerState<PairScreen> {
           transparent ? Colors.transparent : null,
       foregroundColor: transparent ? Colors.white : null,
       elevation: transparent ? 0 : null,
-      title: Text(
-        state.step == PairingStep.idle
-            ? 'Escanear dispositivo'
-            : state.step == PairingStep.naming
-                ? 'Nomear dispositivo'
-                : 'Confirmar pareamento',
-      ),
+      title: Text(_titleFor(state.step)),
       leading: IconButton(
         icon: const Icon(Icons.arrow_back),
         onPressed: () {
@@ -92,6 +89,18 @@ class _PairScreenState extends ConsumerState<PairScreen> {
     );
   }
 
+  String _titleFor(PairingStep step) => switch (step) {
+        PairingStep.idle => 'Escanear dispositivo',
+        PairingStep.confirming => 'Confirmar pareamento',
+        PairingStep.bleScan => 'Buscar dispositivo',
+        PairingStep.bleConnecting => 'Conectando...',
+        PairingStep.provisioning => 'Configurar Wi-Fi',
+        PairingStep.claiming => 'Pareando...',
+        PairingStep.naming => 'Nomear dispositivo',
+        PairingStep.success => 'Concluído',
+        PairingStep.error => 'Erro',
+      };
+
   // ── Body dispatcher ──────────────────────────────────────────────────────
 
   Widget _buildBody(BuildContext context, PairingState state) {
@@ -101,32 +110,48 @@ class _PairScreenState extends ConsumerState<PairScreen> {
           onDetect: (raw) =>
               ref.read(pairingNotifierProvider.notifier).onQrDetected(raw),
         ),
-      PairingStep.confirming || PairingStep.claiming => _ConfirmStep(
+      PairingStep.confirming => _ConfirmStep(
           deviceId: state.deviceId ?? '',
           pairingCode: state.pairingCode ?? '',
-          isLoading: state.step == PairingStep.claiming,
           onConfirm: () =>
-              ref.read(pairingNotifierProvider.notifier).confirmClaim(),
+              ref.read(pairingNotifierProvider.notifier).startBleScan(),
           onCancel: () =>
               ref.read(pairingNotifierProvider.notifier).reset(),
         ),
-      PairingStep.naming => _NameStep(
-          controller: _aliasController,
-          focusNode: _aliasFocus,
-          onSave: () => ref
+      PairingStep.bleScan => BleScanStep(
+          devices: state.discoveredDevices,
+          isScanning: true,
+          onDeviceSelected: (d) => ref
               .read(pairingNotifierProvider.notifier)
-              .finishWithAlias(_aliasController.text),
-          onSkip: () => ref
-              .read(pairingNotifierProvider.notifier)
-              .finishWithAlias(''),
+              .selectDevice(d.bleId, d.name),
+          onRetry: () =>
+              ref.read(pairingNotifierProvider.notifier).retryBleScan(),
         ),
+      PairingStep.bleConnecting => _LoadingStep(
+          message:
+              'Conectando a ${state.selectedBleDeviceName ?? "dispositivo"}...',
+        ),
+      PairingStep.provisioning => WifiProvisionStep(
+          deviceName: state.selectedBleDeviceName ?? 'dispositivo',
+          isLoading: false,
+          onSubmit: (ssid, psk) => ref
+              .read(pairingNotifierProvider.notifier)
+              .submitProvisioning(ssid, psk),
+          onSkip: () =>
+              ref.read(pairingNotifierProvider.notifier).skipProvisioning(),
+        ),
+      PairingStep.claiming => const _LoadingStep(message: 'Pareando dispositivo...'),
+      PairingStep.naming => PairingSuccessStep(
+          onFinish: (alias) => ref
+              .read(pairingNotifierProvider.notifier)
+              .finishWithAlias(alias),
+        ),
+      PairingStep.success => const SizedBox.shrink(),
       PairingStep.error => _ErrorStep(
-          message: state.errorMessage ??
-              'Erro desconhecido. Tente novamente.',
+          message: state.errorMessage ?? 'Erro desconhecido. Tente novamente.',
           onRetry: () =>
               ref.read(pairingNotifierProvider.notifier).reset(),
         ),
-      PairingStep.success => const SizedBox.shrink(),
     };
   }
 }
@@ -232,14 +257,12 @@ class _ConfirmStep extends StatelessWidget {
   const _ConfirmStep({
     required this.deviceId,
     required this.pairingCode,
-    required this.isLoading,
     required this.onConfirm,
     required this.onCancel,
   });
 
   final String deviceId;
   final String pairingCode;
-  final bool isLoading;
   final VoidCallback onConfirm;
   final VoidCallback onCancel;
 
@@ -265,15 +288,14 @@ class _ConfirmStep extends StatelessWidget {
             ),
             const SizedBox(height: VenaSpacing.xl),
             VenaButton(
-              label: 'Confirmar',
-              isLoading: isLoading,
-              onPressed: isLoading ? null : onConfirm,
+              label: 'Buscar via Bluetooth',
+              onPressed: onConfirm,
             ),
             const SizedBox(height: VenaSpacing.md),
             VenaButton(
               label: 'Cancelar',
               variant: VenaButtonVariant.ghost,
-              onPressed: isLoading ? null : onCancel,
+              onPressed: onCancel,
             ),
           ],
         ),
@@ -311,68 +333,23 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-// ── Step 3 — Name ─────────────────────────────────────────────────────────────
+// ── Loading state ─────────────────────────────────────────────────────────────
 
-class _NameStep extends StatelessWidget {
-  const _NameStep({
-    required this.controller,
-    required this.focusNode,
-    required this.onSave,
-    required this.onSkip,
-  });
-
-  final TextEditingController controller;
-  final FocusNode focusNode;
-  final VoidCallback onSave;
-  final VoidCallback onSkip;
+class _LoadingStep extends StatelessWidget {
+  const _LoadingStep({required this.message});
+  final String message;
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(VenaSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.check_circle_outline,
-                size: 64, color: Color(0xFF5F6C37)),
-            const SizedBox(height: VenaSpacing.md),
-            Text(
-              'Dispositivo pareado!',
-              style: VenaTypography.headlineMedium,
-            ),
-            const SizedBox(height: VenaSpacing.sm),
-            Text(
-              'Dê um apelido ao dispositivo para identificá-lo facilmente.',
-              textAlign: TextAlign.center,
-              style: VenaTypography.bodyMedium.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: VenaSpacing.xxl),
-            TextField(
-              controller: controller,
-              focusNode: focusNode,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: InputDecoration(
-                labelText: 'Apelido (opcional)',
-                hintText: 'Ex: Sala de fermentação',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(VenaRadius.md),
-                ),
-              ),
-              onSubmitted: (_) => onSave(),
-            ),
-            const SizedBox(height: VenaSpacing.xl),
-            VenaButton(label: 'Salvar', onPressed: onSave),
-            const SizedBox(height: VenaSpacing.md),
-            VenaButton(
-              label: 'Pular',
-              variant: VenaButtonVariant.ghost,
-              onPressed: onSkip,
-            ),
-          ],
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: VenaSpacing.xl),
+          Text(message,
+              style: VenaTypography.bodyMedium, textAlign: TextAlign.center),
+        ],
       ),
     );
   }
