@@ -18,12 +18,16 @@ class ConnectionBadge extends StatefulWidget {
     super.key,
     required this.online,
     this.label,
+    this.source,
   });
 
   final bool online;
 
-  /// Custom label. Defaults to "Online" / "Offline".
+  /// Custom label. Defaults to "Online (BLE)" / "Online (MQTT)" / "Offline".
   final String? label;
+
+  /// Data source: 'ble', 'mqtt', or 'none'. Shown as suffix when online.
+  final String? source;
 
   @override
   State<ConnectionBadge> createState() => _ConnectionBadgeState();
@@ -67,8 +71,19 @@ class _ConnectionBadgeState extends State<ConnectionBadge>
   @override
   Widget build(BuildContext context) {
     final color = widget.online ? VenaColors.online : VenaColors.offline;
-    final label =
-        widget.label ?? (widget.online ? 'Online' : 'Offline');
+    final String label;
+    if (widget.label != null) {
+      label = widget.label!;
+    } else if (!widget.online) {
+      label = 'Offline';
+    } else {
+      final suffix = switch (widget.source) {
+        'ble' => ' (BLE)',
+        'mqtt' => ' (MQTT)',
+        _ => '',
+      };
+      label = 'Online$suffix';
+    }
 
     return Row(
       mainAxisSize: MainAxisSize.min,

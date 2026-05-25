@@ -39,6 +39,7 @@ class DeviceDetailScreen extends ConsumerWidget {
     final cacheAsync = ref.watch(recentCacheProvider(deviceId));
     final latest = latestAsync.valueOrNull;
     final isOnline = latest?.online ?? false;
+    final source = ref.watch(connectionSourceProvider(deviceId));
 
     return Scaffold(
       backgroundColor: VenaColors.background,
@@ -56,7 +57,7 @@ class DeviceDetailScreen extends ConsumerWidget {
           children: [
             Text(deviceId, style: VenaTypography.headlineSmall),
             const SizedBox(height: 2),
-            ConnectionBadge(online: isOnline),
+            ConnectionBadge(online: isOnline, source: source),
           ],
         ),
         actions: [
