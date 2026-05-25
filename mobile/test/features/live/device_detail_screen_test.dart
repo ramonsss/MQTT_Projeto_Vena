@@ -50,6 +50,8 @@ List<Override> _staticOverrides(LatestState? latest) => [
           .overrideWith((ref) => Stream.value(latest)),
       recentCacheProvider('dev1')
           .overrideWith((ref) async => const <TelemetryCacheData>[]),
+      connectionSourceProvider('dev1')
+          .overrideWith((ref) => latest?.source ?? 'none'),
     ];
 
 void main() {
@@ -108,6 +110,8 @@ void main() {
           latestStateProvider('dev1').overrideWith((ref) => ctrl.stream),
           recentCacheProvider('dev1')
               .overrideWith((ref) async => const <TelemetryCacheData>[]),
+          connectionSourceProvider('dev1')
+              .overrideWith((ref) => 'mqtt'),
         ],
       ));
 
