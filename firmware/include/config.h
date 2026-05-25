@@ -117,3 +117,28 @@
 #ifndef MQTT_NVS_JWT_KEY
 #define MQTT_NVS_JWT_KEY "device_jwt"
 #endif
+
+// ─── BLE Configuration ─────────────────────────────────────────────────────
+#ifndef BLE_DEVICE_PREFIX
+#define BLE_DEVICE_PREFIX "Vena-"
+#endif
+#ifndef BLE_NOTIFY_INTERVAL_MS
+#define BLE_NOTIFY_INTERVAL_MS 2000
+#endif
+#ifndef BLE_MTU
+#define BLE_MTU 247
+#endif
+
+// ─── Wi-Fi Provisioning (NVS keys) ─────────────────────────────────────────
+#ifndef NVS_NAMESPACE
+#define NVS_NAMESPACE "vena_cfg"
+#endif
+#ifndef NVS_KEY_SSID
+#define NVS_KEY_SSID "wifi_ssid"
+#endif
+#ifndef NVS_KEY_PSK
+#define NVS_KEY_PSK "wifi_psk"
+#endif
+#ifndef NVS_KEY_JWT
+#define NVS_KEY_JWT "device_jwt"
+#endif
