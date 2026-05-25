@@ -32,3 +32,12 @@ class DeviceListResponse(BaseModel):
 
 class DeviceUpdateRequest(BaseModel):
     alias: str
+
+
+class ProvisionRequest(BaseModel):
+    device_id: str
+    pairing_code: str
+
+
+class ProvisionResponse(BaseModel):
+    device_jwt: str

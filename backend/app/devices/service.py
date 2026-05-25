@@ -7,17 +7,21 @@ from app.devices.pairing import verify_pairing_code
 from app.devices.schemas import ClaimResponse, DeviceItem, DeviceListResponse
 
 
+async def get_device_or_404(device_id: str, session: AsyncSession) -> Device:
+    result = await session.execute(select(Device).where(Device.id == device_id))
+    device = result.scalar_one_or_none()
+    if device is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Device not found")
+    return device
+
+
 async def claim_device(
     user: User,
     device_id: str,
     pairing_code: str,
     session: AsyncSession,
 ) -> ClaimResponse:
-    
-    result = await session.execute(select(Device).where(Device.id == device_id))
-    device = result.scalar_one_or_none()
-    if device is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Device not found")
+    device = await get_device_or_404(device_id, session)
 
     if not verify_pairing_code(pairing_code, device.pairing_code_hash):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid pairing code")
