@@ -81,9 +81,10 @@ class PairingNotifier extends _$PairingNotifier {
 
   @override
   PairingState build() {
+    final bleService = ref.read(bleServiceProvider);
     ref.onDispose(() {
       _scanSub?.cancel();
-      ref.read(bleServiceProvider).stopScan();
+      bleService.stopScan();
     });
     return const PairingState();
   }

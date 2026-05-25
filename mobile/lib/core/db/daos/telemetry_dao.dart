@@ -17,9 +17,16 @@ class TelemetryDao extends DatabaseAccessor<AppDatabase>
             ..where((t) => t.deviceId.equals(deviceId)))
           .watchSingleOrNull();
 
-  // Insert or replace the latest state row.
+  // Insert or update the latest state row, but only when the new ts is
+  // strictly newer than the stored one (most-recent wins).
   Future<void> upsertLatestState(LatestStatesCompanion entry) =>
-      into(latestStates).insertOnConflictUpdate(entry);
+      into(latestStates).insert(
+        entry,
+        onConflict: DoUpdate(
+          (_) => entry,
+          where: (old) => old.ts.isSmallerThanValue(entry.ts.value),
+        ),
+      );
 
   // Append one row to the telemetry ring buffer.
   Future<void> insertTelemetryCache(TelemetryCacheCompanion entry) =>
