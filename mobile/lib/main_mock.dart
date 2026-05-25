@@ -50,10 +50,10 @@ Future<void> _seedDatabase(AppDatabase db) async {
 
   final now = DateTime.now().millisecondsSinceEpoch;
 
-  // ── Device 1 — online com telemetria ──────────────────────────────────────
+  // ── Device 1 — online, delta +1.3°C → DeviationIndicator amarelo ──────────
   await db.deviceDao.upsertDevice(DevicesCompanion(
     deviceId: const Value('vena-a1b2c3'),
-    alias: const Value('Aquário Principal'),
+    alias: const Value('Câmara Fria A'),
     status: const Value('online'),
     lastSeenAt: Value(now),
     fwVersion: const Value('1.3.0'),
@@ -61,31 +61,32 @@ Future<void> _seedDatabase(AppDatabase db) async {
   await db.telemetryDao.upsertLatestState(LatestStatesCompanion(
     deviceId: const Value('vena-a1b2c3'),
     ts: Value(now),
-    ambientT: const Value(24.3),
-    ambientH: const Value(68.5),
+    ambientT: const Value(24.3),  // delta = +1.3°C → amarelo
+    ambientH: const Value(72.0),
     dissT: const Value(22.1),
-    dissH: const Value(72.0),
+    dissH: const Value(74.0),
     setpoint: const Value(23.0),
     pidOut: const Value(14.2),
     online: const Value(true),
   ));
-  // Ring buffer com 30 pontos para o mini-chart
-  for (var i = 30; i >= 0; i--) {
+  // Ring buffer com 60 pontos — umidade oscila ±12% para eixo secundário visível
+  for (var i = 60; i >= 0; i--) {
     final ts = now - i * 60 * 1000;
+    final phase = i / 60.0 * 2 * 3.14159;
     await db.telemetryDao.insertTelemetryCache(TelemetryCacheCompanion(
       deviceId: const Value('vena-a1b2c3'),
       ts: Value(ts),
       ambientT: Value(24.3 + (i % 5) * 0.3 - 0.6),
-      ambientH: Value(68.5 + (i % 3) * 1.2 - 1.2),
+      ambientH: Value(72.0 + 10.0 * (phase % 1.0 < 0.5 ? phase % 1.0 : 1.0 - phase % 1.0) - 2.0),
       dissT: Value(22.1 + (i % 4) * 0.2),
-      dissH: Value(72.0 - (i % 5) * 0.5),
+      dissH: Value(74.0 - (i % 5) * 0.4),
     ));
   }
 
-  // ── Device 2 — offline ────────────────────────────────────────────────────
+  // ── Device 2 — offline, delta −4.2°C → DeviationIndicator vermelho ─────────
   await db.deviceDao.upsertDevice(DevicesCompanion(
     deviceId: const Value('vena-d4e5f6'),
-    alias: const Value('Tanque Lateral'),
+    alias: const Value('Câmara Fria B'),
     status: const Value('offline'),
     lastSeenAt: Value(now - 2 * 60 * 60 * 1000), // 2h atrás
     fwVersion: const Value('1.2.1'),
@@ -93,11 +94,11 @@ Future<void> _seedDatabase(AppDatabase db) async {
   await db.telemetryDao.upsertLatestState(LatestStatesCompanion(
     deviceId: const Value('vena-d4e5f6'),
     ts: Value(now - 2 * 60 * 60 * 1000),
-    ambientT: const Value(21.8),
-    ambientH: const Value(61.0),
-    dissT: const Value(20.5),
-    dissH: const Value(65.0),
-    setpoint: const Value(22.0),
+    ambientT: const Value(18.8),  // delta = −4.2°C → vermelho
+    ambientH: const Value(55.0),
+    dissT: const Value(17.5),
+    dissH: const Value(58.0),
+    setpoint: const Value(23.0),
     pidOut: const Value(0.0),
     online: const Value(false),
   ));
@@ -107,19 +108,44 @@ Future<void> _seedDatabase(AppDatabase db) async {
     await db.telemetryDao.insertTelemetryCache(TelemetryCacheCompanion(
       deviceId: const Value('vena-d4e5f6'),
       ts: Value(ts),
-      ambientT: Value(21.8 - (i % 6) * 0.2 + 0.4),
-      ambientH: Value(61.0 + (i % 4) * 0.8),
-      dissT: Value(20.5 - (i % 5) * 0.15),
-      dissH: Value(65.0 + (i % 3) * 0.6),
+      ambientT: Value(18.8 - (i % 6) * 0.2 + 0.4),
+      ambientH: Value(55.0 + (i % 7) * 1.5 - 2.0),
+      dissT: Value(17.5 - (i % 5) * 0.15),
+      dissH: Value(58.0 + (i % 3) * 0.6),
     ));
   }
 
-  // ── Device 3 — recém pareado, sem telemetria ainda ───────────────────────
+  // ── Device 3 — online, delta +0.4°C → DeviationIndicator verde ───────────
   await db.deviceDao.upsertDevice(DevicesCompanion(
     deviceId: const Value('vena-g7h8i9'),
-    alias: const Value(''),
-    status: const Value('offline'),
+    alias: const Value('Estufa Leste'),
+    status: const Value('online'),
+    lastSeenAt: Value(now),
+    fwVersion: const Value('1.3.1'),
   ));
+  await db.telemetryDao.upsertLatestState(LatestStatesCompanion(
+    deviceId: const Value('vena-g7h8i9'),
+    ts: Value(now),
+    ambientT: const Value(23.4),  // delta = +0.4°C → verde
+    ambientH: const Value(80.5),
+    dissT: const Value(22.8),
+    dissH: const Value(82.0),
+    setpoint: const Value(23.0),
+    pidOut: const Value(4.5),
+    online: const Value(true),
+  ));
+  // Ring buffer para o mini-chart do device 3
+  for (var i = 60; i >= 0; i--) {
+    final ts = now - i * 60 * 1000;
+    await db.telemetryDao.insertTelemetryCache(TelemetryCacheCompanion(
+      deviceId: const Value('vena-g7h8i9'),
+      ts: Value(ts),
+      ambientT: Value(23.4 + (i % 4) * 0.15 - 0.3),
+      ambientH: Value(80.5 + (i % 5) * 2.0 - 3.5),
+      dissT: Value(22.8 + (i % 3) * 0.1),
+      dissH: Value(82.0 - (i % 4) * 0.3),
+    ));
+  }
 }
 
 // ── Mock DeviceApi (synthetic history data) ────────────────────────────────

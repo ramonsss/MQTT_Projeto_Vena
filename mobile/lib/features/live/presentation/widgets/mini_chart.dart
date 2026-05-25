@@ -1,10 +1,8 @@
-// J3 — MiniChart: compact 1-hour sparkline for the device detail screen.
+// J3 — MiniChart: compact 1-hour sparkline for a single variable.
 //
-// Renders the last [points] rows from telemetry_cache as a fl_chart LineChart.
-// Two lines: ambient temperature (terracotta) + dissolved temperature (olive).
-// Gradient fill under each line gives the organic Vena aesthetic.
-//
-// If fewer than 2 data points are available, a placeholder is shown instead.
+// Shows the last [points] from telemetry_cache as a fl_chart LineChart.
+// Single line with gradient fill. Used twice in the detail screen:
+// once for temperature, once for humidity.
 
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -17,10 +15,26 @@ class MiniChart extends StatelessWidget {
   const MiniChart({
     super.key,
     required this.points,
+    required this.valueGetter,
+    required this.lineColor,
+    required this.unit,
+    this.label,
   });
 
   /// Cache rows from [TelemetryDao.getRecentCache], newest-first.
   final List<TelemetryCacheData> points;
+
+  /// Extracts the value to plot from each cache row.
+  final double? Function(TelemetryCacheData) valueGetter;
+
+  /// Color for the line and gradient fill.
+  final Color lineColor;
+
+  /// Unit shown in tooltip (e.g. "°C" or "%").
+  final String unit;
+
+  /// Optional label for tooltip prefix.
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
@@ -37,58 +51,45 @@ class MiniChart extends StatelessWidget {
     final ordered = points.reversed.toList();
     final minTs = ordered.first.ts.toDouble();
 
-    // Convert ms timestamps → relative minutes from oldest point.
-    List<FlSpot> toSpots(double? Function(TelemetryCacheData) getter) {
-      final result = <FlSpot>[];
-      for (final p in ordered) {
-        final y = getter(p);
-        if (y != null) {
-          result.add(FlSpot((p.ts - minTs) / 60000, y));
-        }
+    final spots = <FlSpot>[];
+    for (final p in ordered) {
+      final y = valueGetter(p);
+      if (y != null) {
+        spots.add(FlSpot((p.ts - minTs) / 60000, y));
       }
-      return result;
     }
 
-    final ambientSpots = toSpots((p) => p.ambientT);
-    final dissSpots = toSpots((p) => p.dissT);
-
-    // Compute y-axis range with 1° padding.
-    final allY = [
-      ...ambientSpots.map((s) => s.y),
-      ...dissSpots.map((s) => s.y),
-    ];
-    if (allY.isEmpty) {
+    if (spots.length < 2) {
       return Center(child: Text('Aguardando dados…', style: VenaTypography.bodySmall));
     }
+
+    final allY = spots.map((s) => s.y);
     final minY = allY.reduce((a, b) => a < b ? a : b) - 1;
     final maxY = allY.reduce((a, b) => a > b ? a : b) + 1;
-
-    LineChartBarData buildLine(List<FlSpot> spots, Color color) =>
-        LineChartBarData(
-          spots: spots,
-          isCurved: true,
-          curveSmoothness: 0.3,
-          color: color,
-          barWidth: 2,
-          dotData: const FlDotData(show: false),
-          belowBarData: BarAreaData(
-            show: true,
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                color.withValues(alpha: 0.18),
-                color.withValues(alpha: 0.0),
-              ],
-            ),
-          ),
-        );
+    final range = maxY - minY;
 
     return LineChart(
       LineChartData(
         lineBarsData: [
-          buildLine(ambientSpots, VenaColors.tempLine),
-          if (dissSpots.length >= 2) buildLine(dissSpots, VenaColors.humidityLine),
+          LineChartBarData(
+            spots: spots,
+            isCurved: true,
+            curveSmoothness: 0.3,
+            color: lineColor,
+            barWidth: 2,
+            dotData: const FlDotData(show: false),
+            belowBarData: BarAreaData(
+              show: true,
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  lineColor.withValues(alpha: 0.18),
+                  lineColor.withValues(alpha: 0.0),
+                ],
+              ),
+            ),
+          ),
         ],
         minY: minY,
         maxY: maxY,
@@ -107,22 +108,20 @@ class MiniChart extends StatelessWidget {
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 36,
-              interval: (maxY - minY) > 4 ? 2 : 1,
+              interval: range > 4 ? 2 : 1,
               getTitlesWidget: (value, meta) => Text(
-                value.toStringAsFixed(0),
+                '${value.toStringAsFixed(0)}$unit',
                 style: VenaTypography.labelSmall,
               ),
             ),
           ),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: false,
-            ),
-          ),
-          topTitles: const AxisTitles(
+          rightTitles: const AxisTitles(
             sideTitles: SideTitles(showTitles: false),
           ),
-          rightTitles: const AxisTitles(
+          bottomTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          topTitles: const AxisTitles(
             sideTitles: SideTitles(showTitles: false),
           ),
         ),
@@ -131,12 +130,10 @@ class MiniChart extends StatelessWidget {
             getTooltipColor: (_) =>
                 VenaColors.surfaceVariant.withValues(alpha: 0.92),
             getTooltipItems: (spots) => spots.map((s) {
-              final color = s.bar.color ?? Colors.grey;
-              final label =
-                  s.barIndex == 0 ? 'Ambiente' : 'Dissolvida';
+              final prefix = label != null ? '${label!}\n' : '';
               return LineTooltipItem(
-                '$label\n${s.y.toStringAsFixed(1)} °C',
-                VenaTypography.labelMedium.copyWith(color: color),
+                '$prefix${s.y.toStringAsFixed(1)} $unit',
+                VenaTypography.labelMedium.copyWith(color: lineColor),
               );
             }).toList(),
           ),

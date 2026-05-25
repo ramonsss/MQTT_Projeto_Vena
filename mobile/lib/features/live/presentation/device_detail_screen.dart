@@ -25,6 +25,7 @@ import '../../../design_system/tokens.dart';
 import '../../../design_system/typography.dart';
 import '../application/live_telemetry_provider.dart';
 import 'widgets/big_metric.dart';
+import 'widgets/deviation_indicator.dart';
 import 'widgets/mini_chart.dart';
 
 class DeviceDetailScreen extends ConsumerWidget {
@@ -89,6 +90,14 @@ class DeviceDetailScreen extends ConsumerWidget {
             // ── Sub-metrics ──────────────────────────────────────────────
             _SubMetricsRow(latest: latest),
 
+            const SizedBox(height: VenaSpacing.xxl),
+
+            // ── Deviation indicator ──────────────────────────────────────
+            DeviationIndicator(
+              ambientT: latest?.ambientT,
+              setpoint: latest?.setpoint,
+            ),
+
             const SizedBox(height: VenaSpacing.xxxl),
 
             // ── Mini-chart ───────────────────────────────────────────────
@@ -112,7 +121,7 @@ class _SubMetricsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         MetricTile(
           value: latest?.ambientH,
@@ -123,13 +132,7 @@ class _SubMetricsRow extends StatelessWidget {
         MetricTile(
           value: latest?.setpoint,
           unit: '°C',
-          label: 'Setpoint',
-        ),
-        _Divider(),
-        MetricTile(
-          value: latest?.pidOut,
-          unit: '%',
-          label: 'Saída PID',
+          label: 'Temp. Alvo',
         ),
       ],
     );
@@ -154,48 +157,83 @@ class _ChartSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(
-                color: VenaColors.tempLine,
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(width: VenaSpacing.xs),
-            Text('Temp. ambiente', style: VenaTypography.labelSmall),
-            const SizedBox(width: VenaSpacing.md),
-            Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(
-                color: VenaColors.humidityLine,
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(width: VenaSpacing.xs),
-            Text('Temp. dissolvida', style: VenaTypography.labelSmall),
-            const Spacer(),
-            Text('Última hora', style: VenaTypography.labelSmall),
-          ],
-        ),
-        const SizedBox(height: VenaSpacing.md),
-        SizedBox(
-          height: 160,
-          child: cacheAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (_, __) => Center(
-              child: Text('Erro ao carregar gráfico.',
-                  style: VenaTypography.bodySmall),
-            ),
-            data: (points) => MiniChart(points: points),
+    return cacheAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (_, __) => Center(
+        child: Text('Erro ao carregar gráfico.',
+            style: VenaTypography.bodySmall),
+      ),
+      data: (points) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Temperature chart ──────────────────────────────────────
+          _ChartLabel(
+            color: VenaColors.tempLine,
+            text: 'Temperatura °C',
+            trailing: 'Última hora',
           ),
+          const SizedBox(height: VenaSpacing.sm),
+          SizedBox(
+            height: 130,
+            child: MiniChart(
+              points: points,
+              valueGetter: (p) => p.ambientT,
+              lineColor: VenaColors.tempLine,
+              unit: '°C',
+              label: 'Temp.',
+            ),
+          ),
+
+          const SizedBox(height: VenaSpacing.xxl),
+
+          // ── Humidity chart ─────────────────────────────────────────
+          _ChartLabel(
+            color: VenaColors.humidityLine,
+            text: 'Umidade %',
+          ),
+          const SizedBox(height: VenaSpacing.sm),
+          SizedBox(
+            height: 130,
+            child: MiniChart(
+              points: points,
+              valueGetter: (p) => p.ambientH,
+              lineColor: VenaColors.humidityLine,
+              unit: '%',
+              label: 'Umid.',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChartLabel extends StatelessWidget {
+  const _ChartLabel({
+    required this.color,
+    required this.text,
+    this.trailing,
+  });
+
+  final Color color;
+  final String text;
+  final String? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
+        const SizedBox(width: VenaSpacing.xs),
+        Text(text, style: VenaTypography.labelSmall),
+        if (trailing != null) ...[
+          const Spacer(),
+          Text(trailing!, style: VenaTypography.labelSmall),
+        ],
       ],
     );
   }
