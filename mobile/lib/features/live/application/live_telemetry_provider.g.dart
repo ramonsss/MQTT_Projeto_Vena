@@ -205,5 +205,147 @@ class _RecentCacheProviderElement
   @override
   int get limit => (origin as RecentCacheProvider).limit;
 }
+
+String _$connectionSourceHash() => r'822bc081595e35f2526f7bbea7a7874e40e351b9';
+
+/// Indicates the active data source: 'ble', 'mqtt', or 'none'.
+///
+/// Copied from [connectionSource].
+@ProviderFor(connectionSource)
+const connectionSourceProvider = ConnectionSourceFamily();
+
+/// Indicates the active data source: 'ble', 'mqtt', or 'none'.
+///
+/// Copied from [connectionSource].
+class ConnectionSourceFamily extends Family<String> {
+  /// Indicates the active data source: 'ble', 'mqtt', or 'none'.
+  ///
+  /// Copied from [connectionSource].
+  const ConnectionSourceFamily();
+
+  /// Indicates the active data source: 'ble', 'mqtt', or 'none'.
+  ///
+  /// Copied from [connectionSource].
+  ConnectionSourceProvider call(
+    String deviceId,
+  ) {
+    return ConnectionSourceProvider(
+      deviceId,
+    );
+  }
+
+  @override
+  ConnectionSourceProvider getProviderOverride(
+    covariant ConnectionSourceProvider provider,
+  ) {
+    return call(
+      provider.deviceId,
+    );
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'connectionSourceProvider';
+}
+
+/// Indicates the active data source: 'ble', 'mqtt', or 'none'.
+///
+/// Copied from [connectionSource].
+class ConnectionSourceProvider extends AutoDisposeProvider<String> {
+  /// Indicates the active data source: 'ble', 'mqtt', or 'none'.
+  ///
+  /// Copied from [connectionSource].
+  ConnectionSourceProvider(
+    String deviceId,
+  ) : this._internal(
+          (ref) => connectionSource(
+            ref as ConnectionSourceRef,
+            deviceId,
+          ),
+          from: connectionSourceProvider,
+          name: r'connectionSourceProvider',
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$connectionSourceHash,
+          dependencies: ConnectionSourceFamily._dependencies,
+          allTransitiveDependencies:
+              ConnectionSourceFamily._allTransitiveDependencies,
+          deviceId: deviceId,
+        );
+
+  ConnectionSourceProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.deviceId,
+  }) : super.internal();
+
+  final String deviceId;
+
+  @override
+  Override overrideWith(
+    String Function(ConnectionSourceRef provider) create,
+  ) {
+    return ProviderOverride(
+      origin: this,
+      override: ConnectionSourceProvider._internal(
+        (ref) => create(ref as ConnectionSourceRef),
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        deviceId: deviceId,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeProviderElement<String> createElement() {
+    return _ConnectionSourceProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is ConnectionSourceProvider && other.deviceId == deviceId;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, deviceId.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+mixin ConnectionSourceRef on AutoDisposeProviderRef<String> {
+  /// The parameter `deviceId` of this provider.
+  String get deviceId;
+}
+
+class _ConnectionSourceProviderElement
+    extends AutoDisposeProviderElement<String> with ConnectionSourceRef {
+  _ConnectionSourceProviderElement(super.provider);
+
+  @override
+  String get deviceId => (origin as ConnectionSourceProvider).deviceId;
+}
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
