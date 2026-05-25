@@ -1,6 +1,7 @@
 #pragma once
 
 #include <NimBLEDevice.h>
+#include "config.h"
 #include "BleManager.h"
 
 class VenaServerCallbacks : public NimBLEServerCallbacks {

@@ -60,7 +60,7 @@ void BleManager::init(const char* deviceName, const char* deviceId,
     );
     _pairingCodeChar->setValue(pairingCode);
 
-    service->start();
+    // service->start() is deprecated in NimBLE 2.x — services start with the server
 
     Serial.printf("[BLE] GATT service started, device=%s\n", deviceName);
     startAdvertising();

@@ -5,7 +5,7 @@
 static Preferences prefs;
 
 void WifiProvisioner::begin() {
-    prefs.begin(NVS_NAMESPACE, true);  // read-only to check
+    prefs.begin(PROV_NVS_NAMESPACE, true);  // read-only to check
     _hasCredentials = prefs.isKey(NVS_KEY_SSID);
     prefs.end();
 }
@@ -16,7 +16,7 @@ bool WifiProvisioner::hasCredentials() const {
 
 StoredCredentials WifiProvisioner::loadCredentials() const {
     StoredCredentials creds;
-    prefs.begin(NVS_NAMESPACE, true);
+    prefs.begin(PROV_NVS_NAMESPACE, true);
     creds.ssid = prefs.getString(NVS_KEY_SSID, "");
     creds.psk = prefs.getString(NVS_KEY_PSK, "");
     creds.jwt = prefs.getString(NVS_KEY_JWT, "");
@@ -25,7 +25,7 @@ StoredCredentials WifiProvisioner::loadCredentials() const {
 }
 
 void WifiProvisioner::saveCredentials(const String& ssid, const String& psk, const String& jwt) {
-    prefs.begin(NVS_NAMESPACE, false);  // read-write
+    prefs.begin(PROV_NVS_NAMESPACE, false);  // read-write
     prefs.putString(NVS_KEY_SSID, ssid);
     prefs.putString(NVS_KEY_PSK, psk);
     prefs.putString(NVS_KEY_JWT, jwt);
@@ -35,7 +35,7 @@ void WifiProvisioner::saveCredentials(const String& ssid, const String& psk, con
 }
 
 void WifiProvisioner::clearCredentials() {
-    prefs.begin(NVS_NAMESPACE, false);
+    prefs.begin(PROV_NVS_NAMESPACE, false);
     prefs.remove(NVS_KEY_SSID);
     prefs.remove(NVS_KEY_PSK);
     prefs.remove(NVS_KEY_JWT);

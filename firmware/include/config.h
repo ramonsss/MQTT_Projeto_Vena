@@ -130,8 +130,8 @@
 #endif
 
 // ─── Wi-Fi Provisioning (NVS keys) ─────────────────────────────────────────
-#ifndef NVS_NAMESPACE
-#define NVS_NAMESPACE "vena_cfg"
+#ifndef PROV_NVS_NAMESPACE
+#define PROV_NVS_NAMESPACE "vena_cfg"
 #endif
 #ifndef NVS_KEY_SSID
 #define NVS_KEY_SSID "wifi_ssid"
