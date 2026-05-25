@@ -33,6 +33,10 @@ dependencies:
   # MQTT
   mqtt_client: ^10.4.0
 
+  # BLE
+  flutter_reactive_ble: ^5.3.1
+  permission_handler: ^11.3.1
+
   # Charts
   fl_chart: ^0.68.0
 
