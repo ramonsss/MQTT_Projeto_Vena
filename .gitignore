@@ -26,3 +26,5 @@ firmware/platformio.local.ini
 
 # Broker MQTT local para testes de integração
 amqtt.yaml
+
+google-services.json
