@@ -5,12 +5,16 @@
 // by MiniChart.
 //
 // recentCacheProvider watches latestStateProvider as a trigger: every time
-// a new MQTT message arrives and updates the latest_states row, Riverpod
+// a new MQTT/BLE message arrives and updates the latest_states row, Riverpod
 // re-runs this future and the mini-chart re-draws with fresh data.
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../core/ble/ble_models.dart';
+import '../../../core/ble/ble_provider.dart';
 import '../../../core/db/app_database.dart';
+import '../../../core/mqtt/mqtt_provider.dart';
+import '../../../core/mqtt/mqtt_service.dart' show VenaMqttStatus;
 import '../../devices/application/devices_provider.dart';
 
 // Re-export so device_detail_screen only needs to import this file.
@@ -34,3 +38,20 @@ Future<List<TelemetryCacheData>> recentCache(
   final db = ref.watch(appDatabaseProvider);
   return db.telemetryDao.getRecentCache(deviceId, limit: limit);
 }
+
+/// Indicates the active data source: 'ble', 'mqtt', or 'none'.
+@riverpod
+String connectionSource(ConnectionSourceRef ref, String deviceId) {
+  final bleStatus = ref.watch(bleStatusProvider).valueOrNull;
+  final mqttStatus = ref.watch(mqttStatusProvider).valueOrNull;
+  final latest = ref.watch(latestStateProvider(deviceId)).valueOrNull;
+
+  // Prefer latest row's source column for accuracy
+  if (latest?.online == true) {
+    return latest!.source;
+  }
+  if (bleStatus == BleConnectionStatus.connected) return 'ble';
+  if (mqttStatus == VenaMqttStatus.connected) return 'mqtt';
+  return 'none';
+}
+
