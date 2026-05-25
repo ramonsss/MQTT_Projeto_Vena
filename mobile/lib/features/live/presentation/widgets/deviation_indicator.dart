@@ -37,12 +37,12 @@ class DeviationIndicator extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.thermostat_outlined,
-                color: VenaColors.textSecondary, size: 20),
+                color: Colors.grey, size: 20),
             const SizedBox(width: VenaSpacing.sm),
             Text(
               'Aguardando leitura…',
               style: VenaTypography.bodyMedium.copyWith(
-                color: VenaColors.textSecondary,
+                color: Colors.grey,
               ),
             ),
           ],
@@ -64,9 +64,9 @@ class DeviationIndicator extends StatelessWidget {
     }
 
     final color = switch (severity) {
-      _Severity.ok => const Color(0xFF4CAF50),
+      _Severity.ok => VenaColors.humidityLine,
       _Severity.warning => const Color(0xFFE5A100),
-      _Severity.critical => const Color(0xFFD32F2F),
+      _Severity.critical => const Color(0xFFBF3922),
     };
 
     final icon = delta > 0 ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded;
@@ -83,23 +83,24 @@ class DeviationIndicator extends StatelessWidget {
     };
 
     return VenaCard(
+      color: color,
       padding: const EdgeInsets.symmetric(
         horizontal: VenaSpacing.xl,
         vertical: VenaSpacing.lg,
       ),
       child: Row(
         children: [
-          // Colored icon
+          // Icon
           Container(
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
+              color: Colors.white.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(VenaRadius.md),
             ),
             child: Icon(
               absDelta <= 0.5 ? Icons.check_rounded : icon,
-              color: color,
+              color: Colors.white,
               size: 22,
             ),
           ),
@@ -114,7 +115,7 @@ class DeviationIndicator extends StatelessWidget {
                 Text(
                   '$sign${delta.toStringAsFixed(1)} °C',
                   style: VenaTypography.headlineSmall.copyWith(
-                    color: color,
+                    color: Colors.white,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -122,7 +123,7 @@ class DeviationIndicator extends StatelessWidget {
                 Text(
                   statusText,
                   style: VenaTypography.bodySmall.copyWith(
-                    color: VenaColors.textSecondary,
+                    color: Colors.white.withValues(alpha: 0.80),
                   ),
                 ),
               ],
@@ -136,12 +137,13 @@ class DeviationIndicator extends StatelessWidget {
               Text(
                 'Alvo',
                 style: VenaTypography.labelSmall.copyWith(
-                  color: VenaColors.textSecondary,
+                  color: Colors.white.withValues(alpha: 0.70),
                 ),
               ),
               Text(
                 '${setpoint!.toStringAsFixed(1)} °C',
                 style: VenaTypography.bodyMedium.copyWith(
+                  color: Colors.white,
                   fontWeight: FontWeight.w600,
                 ),
               ),
