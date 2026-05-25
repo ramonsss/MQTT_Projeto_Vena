@@ -18,9 +18,10 @@ pelo app via BLE**. Não é necessário recompilar o firmware nem gravar nada
 manualmente após o primeiro flash.
 
 ```
+0. Testes unitários do firmware → valida lógica BLE/JSON sem hardware (desenvolvimento)
 1. Flash do firmware  → ESP32 começa a fazer advertising BLE ("Vena-XXXX")
 2. Seed do device     → registra o device no banco (uma vez por unidade)
-3. Validar com nRF Connect → confirma que BLE está funcionando (opcional, mas recomendado)
+3. Validar com nRF Connect → confirma que BLE está funcionando no hardware real
 4. App Flutter        → scan QR → BLE scan → provisioning Wi-Fi + JWT → claim
                         (a partir daqui o ESP32 está online sem mais intervenção)
 ```
@@ -30,6 +31,52 @@ manualmente após o primeiro flash.
 > O `device_id` é `vena-` + MAC sem separadores.
 > O `pairing_code` é gerado deterministicamente do MAC no firmware (função `buildDeviceId()`).
 > Para obter o pairing code sem o app, leia a seção [Obter o pairing code](#obter-o-pairing-code).
+
+---
+
+## Passo 0 — Testar firmware (sem hardware)
+
+Antes de flashar, execute os testes unitários do firmware para validar a lógica BLE
+e de serialização JSON. Esses testes rodam em host (PC) via PlatformIO native —
+**não precisam de ESP32 conectado**.
+
+```powershell
+cd firmware
+pio test -e native
+```
+
+O que é validado:
+
+| Teste | O que verifica |
+|---|---|
+| UUID format | Todos os UUIDs BLE têm o prefixo `VENA` esperado |
+| UUID chars | Nenhum caractere inválido nos UUIDs (128-bit hex + hífens) |
+| Provisioning parser | JSON `{ssid, psk, jwt}` é extraído corretamente do payload BLE |
+| Telemetry JSON | Serialização produz todas as chaves obrigatórias (`ts`, `at`, `ah`, `dt`, `dh`, `sp`) |
+| wifi_status JSON | Gera `{"connected":false}` e `{"connected":true,"ssid":"..."}` corretamente |
+
+Saída esperada:
+
+```
+test/test_ble_manager/test_ble_manager.cpp:XX:test_uuid_format_128bit [PASSED]
+test/test_ble_manager/test_ble_manager.cpp:XX:test_uuid_has_vena_marker [PASSED]
+test/test_ble_manager/test_ble_manager.cpp:XX:test_all_uuids_have_vena_chars [PASSED]
+test/test_ble_manager/test_ble_manager.cpp:XX:test_provisioning_parser_happy_path [PASSED]
+test/test_ble_manager/test_ble_manager.cpp:XX:test_provisioning_parser_missing_key [PASSED]
+test/test_ble_manager/test_ble_manager.cpp:XX:test_telemetry_json_keys [PASSED]
+test/test_ble_manager/test_ble_manager.cpp:XX:test_telemetry_json_values [PASSED]
+test/test_ble_manager/test_ble_manager.cpp:XX:test_wifi_status_disconnected [PASSED]
+test/test_ble_manager/test_ble_manager.cpp:XX:test_wifi_status_connected [PASSED]
+
+-----------------------
+9 Tests 0 Failures 0 Ignored
+OK
+```
+
+> **Não confunda com o teste BLE de hardware (Passo 3).** O `pio test -e native`
+> verifica apenas a lógica de parsing/serialização. Para confirmar que o rádio BLE
+> do ESP32 está funcionando e os serviços GATT estão corretos, ainda é necessário
+> o Passo 3 (nRF Connect) após o flash.
 
 ---
 
@@ -113,9 +160,11 @@ Device 'vena-a0b765c1d2e3' inserted into DB.
 
 ---
 
-## Passo 3 — Validar BLE com nRF Connect (recomendado)
+## Passo 3 — Validar BLE com nRF Connect
 
-Antes de usar o app, confirme que o BLE está funcionando corretamente.
+Enquanto o Passo 0 valida a lógica do firmware sem hardware, este passo confirma
+que o **rádio BLE do ESP32** está funcionando e que os serviços GATT estão acessíveis
+no dispositivo real. Faça isso logo após o flash, antes de passar para o app.
 
 ### 3a. Instalar nRF Connect for Mobile
 Disponível na Play Store (Android) e App Store (iOS).
@@ -142,7 +191,8 @@ Disponível na Play Store (Android) e App Store (iOS).
 2. Se ESP sem Wi-Fi: `{"connected":false}` ✅ normal neste ponto
 3. Se já conectado (platformio.local.ini definido): `{"connected":true,"ssid":"...","ip":"...","rssi":-XX}`
 
-> Após confirmar esses 4 pontos, **o firmware está validado** e o ESP32 não
+> Após confirmar esses 4 pontos, **o firmware está completamente validado**
+> (lógica via `pio test -e native` + hardware via nRF Connect) e o ESP32 não
 > precisará ser reconectado ao computador novamente — o app cuida do resto.
 
 ---
