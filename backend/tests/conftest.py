@@ -27,6 +27,7 @@ async def null_pool_engine():
     # Lazy imports: test modules are already collected at this point.
     import tests.test_telemetry_integration as telemetry_module  # noqa: PLC0415
     import tests.test_phase2 as phase2_module  # noqa: PLC0415
+    import tests.test_provisioning_e2e as provisioning_module  # noqa: PLC0415
 
     engine = create_async_engine(settings.database_url, poolclass=NullPool)
     factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -37,6 +38,7 @@ async def null_pool_engine():
         "ingest": ingest_module.async_session_factory,
         "telemetry": telemetry_module.async_session_factory,
         "phase2": phase2_module.async_session_factory,
+        "provisioning": provisioning_module.async_session_factory,
     }
 
     db_module.engine = engine
@@ -44,6 +46,7 @@ async def null_pool_engine():
     ingest_module.async_session_factory = factory
     telemetry_module.async_session_factory = factory
     phase2_module.async_session_factory = factory
+    provisioning_module.async_session_factory = factory
 
     yield factory
 
@@ -52,4 +55,5 @@ async def null_pool_engine():
     ingest_module.async_session_factory = _orig["ingest"]
     telemetry_module.async_session_factory = _orig["telemetry"]
     phase2_module.async_session_factory = _orig["phase2"]
+    provisioning_module.async_session_factory = _orig["provisioning"]
     await engine.dispose()
