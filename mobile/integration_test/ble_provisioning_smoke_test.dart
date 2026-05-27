@@ -327,12 +327,16 @@ void main() {
       );
 
       // ── 5: fill Wi-Fi form and submit ───────────────────────────────────
+      // Pump after each enterText so the controller updates before validation.
       await tester.enterText(find.byType(TextFormField).at(0), 'FazendaWifi');
+      await tester.pump();
       await tester.enterText(find.byType(TextFormField).at(1), 'senha1234');
-      // Tap the submit button (last "Configurar Wi-Fi" text avoids ambiguity
-      // with the heading Text widget).
-      await tester.tap(find.text('Configurar Wi-Fi').last);
-      await _settle(tester, frames: 15);
+      await tester.pump();
+      // PSK field declares onFieldSubmitted: (_) => _submit(), so
+      // receiveAction(done) triggers _submit() directly — no need to tap the
+      // button separately (which is unreliable when the virtual keyboard is open).
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await _settle(tester, frames: 30); // 1500ms — covers 500ms elasticOut animation
 
       // ── 6: naming step ──────────────────────────────────────────────────
       expect(
@@ -342,9 +346,12 @@ void main() {
       );
 
       // ── 7: enter alias and finish ───────────────────────────────────────
+      // TextField.onSubmitted → onFinish → finishWithAlias → step:success.
+      // Same pattern: receiveAction(done) is the submission trigger.
       await tester.enterText(find.byType(TextField), 'Minha Vena Smoke');
-      await tester.tap(find.text('Concluir'));
-      await _settle(tester, frames: 15);
+      await tester.pump();
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await _settle(tester, frames: 20);
 
       // ── 8: success → router redirects to /devices ──────────────────────
       // PairScreen's ref.listen fires context.go('/devices') on success.
