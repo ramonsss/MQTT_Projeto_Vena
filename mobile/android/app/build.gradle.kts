@@ -29,6 +29,10 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }
@@ -41,4 +45,13 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Bundled ML Kit barcode scanning — embeds the model in the APK so the
+    // QR scanner works offline and on devices without Google Play Services.
+    // Without this, mobile_scanner defaults to the unbundled variant and the
+    // first launch shows a black screen with an error icon while it tries to
+    // download the model.
+    implementation("com.google.mlkit:barcode-scanning:17.3.0")
 }

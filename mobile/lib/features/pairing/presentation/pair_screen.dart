@@ -178,6 +178,34 @@ class _ScanStep extends StatelessWidget {
             final raw = capture.barcodes.firstOrNull?.rawValue;
             if (raw != null && raw.isNotEmpty) onDetect(raw);
           },
+          errorBuilder: (context, error, _) {
+            return Container(
+              color: Colors.black,
+              alignment: Alignment.center,
+              padding: const EdgeInsets.all(VenaSpacing.xl),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.no_photography_outlined,
+                      size: 64, color: Colors.white70),
+                  const SizedBox(height: VenaSpacing.lg),
+                  Text(
+                    'Não foi possível iniciar a câmera.',
+                    textAlign: TextAlign.center,
+                    style: VenaTypography.headlineSmall
+                        .copyWith(color: Colors.white),
+                  ),
+                  const SizedBox(height: VenaSpacing.sm),
+                  Text(
+                    error.errorCode.toString(),
+                    textAlign: TextAlign.center,
+                    style: VenaTypography.bodySmall
+                        .copyWith(color: Colors.white70),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
         // Dark overlay with centred cutout.
         _ScannerOverlay(),
