@@ -6,7 +6,11 @@
 //  1. Substitui SecureTokenStorage por versão fake (token sempre presente)
 //  2. Semeia o Drift com 3 devices + telemetria realista
 //  3. Sobrescreve deviceApiProvider com Dio que retorna histórico sintético
-//  4. Sync / MQTT falham silenciosamente (try/catch em _postLoginSetup)
+//     e aceita provisioning / claim / alias
+//  4. Sobrescreve bleServiceProvider com fake BLE (scan → connect → provision)
+//  5. Câmera funciona de verdade — lê QR codes reais
+
+import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:drift/drift.dart';
@@ -14,8 +18,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import 'package:flutter_reactive_ble/flutter_reactive_ble.dart' show DiscoveredDevice;
+
 import 'app.dart';
 import 'core/auth/secure_token_storage.dart';
+import 'core/ble/ble_models.dart';
+import 'core/ble/ble_provider.dart';
+import 'core/ble/ble_service.dart';
 import 'core/db/app_database.dart';
 import 'core/network/device_api.dart';
 
@@ -148,17 +157,138 @@ Future<void> _seedDatabase(AppDatabase db) async {
   }
 }
 
-// ── Mock DeviceApi (synthetic history data) ────────────────────────────────
+// ── Mock BLE Service ─────────────────────────────────────────────────────────
 
-/// Returns 120 synthetic telemetry points spread over the last 24 hours.
-/// Real API calls (listDevices, claimDevice, etc.) throw silently — that's
-/// fine because _postLoginSetup wraps them in try/catch.
+/// Simulates BLE scan → connect → provision without real Bluetooth.
+///
+/// Discovers a fake device named "Vena-35F4" (matching ESP32 MAC D0:EF:76:32:35:F4).
+/// Connection succeeds immediately. provisioning writes "succeed". wifi_status
+/// transitions from not-connected to connected after a short delay.
+class _MockBleService implements BleService {
+  final _stateCtrl = StreamController<BleConnectionStatus>.broadcast();
+  final _telemetryCtrl = StreamController<BleTelemetry>.broadcast();
+
+  BleConnectionStatus _status = BleConnectionStatus.disconnected;
+  bool _provisioned = false;
+
+  @override
+  Stream<BleConnectionStatus> get connectionState => _stateCtrl.stream;
+
+  @override
+  Stream<BleTelemetry> get onTelemetry => _telemetryCtrl.stream;
+
+  @override
+  BleConnectionStatus get currentStatus => _status;
+
+  void _emitState(BleConnectionStatus s) {
+    _status = s;
+    _stateCtrl.add(s);
+  }
+
+  // ── Scan ─────────────────────────────────────────────────────────────────
+
+  @override
+  void startScan({
+    required void Function(DiscoveredDevice) onDeviceFound,
+    Duration timeout = const Duration(seconds: 10),
+  }) {
+    _emitState(BleConnectionStatus.scanning);
+    // startScan is not used by the pairing wizard (it uses scanForVenaDevices)
+    // but we still need to implement it to satisfy the interface.
+    stopScan();
+  }
+
+  @override
+  Stream<DiscoveredVenaDevice> scanForVenaDevices({
+    Duration timeout = const Duration(seconds: 15),
+  }) {
+    _emitState(BleConnectionStatus.scanning);
+    return Stream.periodic(const Duration(milliseconds: 300), (i) {
+      return const DiscoveredVenaDevice(
+        bleId: 'D0:EF:76:32:35:F4',
+        name: 'Vena-35F4',
+        rssi: -42,
+      );
+    }).take(1).asBroadcastStream();
+  }
+
+  @override
+  void stopScan() {
+    if (_status == BleConnectionStatus.scanning) {
+      _emitState(BleConnectionStatus.disconnected);
+    }
+  }
+
+  // ── Connect ──────────────────────────────────────────────────────────────
+
+  @override
+  void connectToDevice(String bleDeviceId) {
+    _emitState(BleConnectionStatus.connecting);
+    // Simulate connection success after 600ms
+    Future.delayed(const Duration(milliseconds: 600), () {
+      _emitState(BleConnectionStatus.connected);
+    });
+  }
+
+  @override
+  Future<void> disconnectDevice() async {
+    _provisioned = false;
+    _emitState(BleConnectionStatus.disconnected);
+  }
+
+  // ── Read characteristics ─────────────────────────────────────────────────
+
+  @override
+  Future<String?> readDeviceId() async => 'vena-d0ef763235f4';
+
+  @override
+  Future<String?> readPairingCode() async => '8A4A-4AF1';
+
+  @override
+  Future<BleWifiStatus?> readWifiStatus() async {
+    if (_provisioned) {
+      return const BleWifiStatus(
+        connected: true,
+        ssid: 'MockWifi',
+        ip: '192.168.1.42',
+        rssi: -55,
+      );
+    }
+    return const BleWifiStatus(connected: false);
+  }
+
+  // ── Provisioning ─────────────────────────────────────────────────────────
+
+  @override
+  Future<bool> provisionWifi(BleWifiCredentials creds) async {
+    // Simulate write delay
+    await Future<void>.delayed(const Duration(milliseconds: 800));
+    _provisioned = true;
+    return true;
+  }
+
+  // ── Dispose ──────────────────────────────────────────────────────────────
+
+  @override
+  void dispose() {
+    _stateCtrl.close();
+    _telemetryCtrl.close();
+  }
+}
+
+// ── Mock DeviceApi (synthetic history data + provisioning) ─────────────────
+
+/// Returns 120 synthetic telemetry points for history.
+/// Also handles provisioning, claim, and alias endpoints.
 DeviceApi _buildMockDeviceApi() {
   final dio = Dio();
   dio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) {
-        if (options.path.contains('/history')) {
+        final path = options.path;
+
+        // ── History ─────────────────────────────────────────────────────────
+        if (path.contains('/history')) {
           final nowSec =
               DateTime.now().millisecondsSinceEpoch ~/ 1000;
           final points = List.generate(120, (i) {
@@ -178,15 +308,56 @@ DeviceApi _buildMockDeviceApi() {
             data: points,
             statusCode: 200,
           ));
-        } else {
-          // Reject other calls — _postLoginSetup handles errors gracefully.
-          handler.reject(
-            DioException(
-              requestOptions: options,
-              message: 'mock: endpoint not available',
-            ),
-          );
+          return;
         }
+
+        // ── Provisioning ────────────────────────────────────────────────────
+        if (path.contains('/devices/provision')) {
+          handler.resolve(Response(
+            requestOptions: options,
+            data: {'device_jwt': 'mock-device-jwt-for-esp32'},
+            statusCode: 200,
+          ));
+          return;
+        }
+
+        // ── Claim ───────────────────────────────────────────────────────────
+        if (path.contains('/claim')) {
+          handler.resolve(Response(
+            requestOptions: options,
+            data: {'status': 'claimed'},
+            statusCode: 200,
+          ));
+          return;
+        }
+
+        // ── List devices ────────────────────────────────────────────────────
+        if (path == '/devices' && options.method == 'GET') {
+          handler.resolve(Response(
+            requestOptions: options,
+            data: const [],
+            statusCode: 200,
+          ));
+          return;
+        }
+
+        // ── Update alias ────────────────────────────────────────────────────
+        if (path.contains('/devices/') && options.method == 'PATCH') {
+          handler.resolve(Response(
+            requestOptions: options,
+            data: {'status': 'updated'},
+            statusCode: 200,
+          ));
+          return;
+        }
+
+        // ── Fallback — silently reject ──────────────────────────────────────
+        handler.reject(
+          DioException(
+            requestOptions: options,
+            message: 'mock: endpoint not available ($path)',
+          ),
+        );
       },
     ),
   );
@@ -208,6 +379,7 @@ void main() async {
         secureTokenStorageProvider
             .overrideWithValue(_MockSecureStorage()),
         deviceApiProvider.overrideWithValue(_buildMockDeviceApi()),
+        bleServiceProvider.overrideWithValue(_MockBleService()),
       ],
       child: const VenaApp(),
     ),
