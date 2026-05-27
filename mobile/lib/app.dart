@@ -32,7 +32,7 @@ class VenaApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'Vena',
       theme: VenaTheme.light(),
-      darkTheme: VenaTheme.dark(),
+      themeMode: ThemeMode.light,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
     );

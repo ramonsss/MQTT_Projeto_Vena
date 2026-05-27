@@ -66,6 +66,8 @@ class VenaTheme {
     );
   }
 
+  // ignore: deprecated_member_use_from_same_package
+  @Deprecated('Dark mode disabled — Vena forces light theme on all devices.')
   static ThemeData dark() {
     final base = ThemeData(
       useMaterial3: true,
