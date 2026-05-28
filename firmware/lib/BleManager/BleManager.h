@@ -19,6 +19,7 @@ public:
     void startAdvertising();
     void stopAdvertising();
     bool isConnected() const;
+    int clientCount() const;
     void notifyTelemetry(const char* jsonPayload);
     void updateWifiStatus(bool connected, const char* ssid = nullptr,
                           const char* ip = nullptr, int rssi = 0);
@@ -32,7 +33,7 @@ private:
     NimBLECharacteristic* _provisionChar = nullptr;
     NimBLECharacteristic* _pairingCodeChar = nullptr;
     ProvisionCallback _provisionCb = nullptr;
-    bool _clientConnected = false;
+    int _clientCount = 0;
 
     friend class VenaServerCallbacks;
     friend class ProvisionWriteCallbacks;

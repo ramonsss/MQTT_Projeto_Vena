@@ -81,7 +81,11 @@ void BleManager::stopAdvertising() {
 }
 
 bool BleManager::isConnected() const {
-    return _clientConnected;
+    return _clientCount > 0;
+}
+
+int BleManager::clientCount() const {
+    return _clientCount;
 }
 
 void BleManager::notifyTelemetry(const char* jsonPayload) {

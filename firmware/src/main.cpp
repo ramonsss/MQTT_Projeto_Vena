@@ -109,8 +109,10 @@ static void onProvisionReceived(const WifiCredentials& creds) {
     Serial.println("[PROV] saving credentials from BLE...");
     provisioner.saveCredentials(creds.ssid, creds.psk, creds.jwt);
 
-    // Store JWT in NvsJwt for MqttPublisher
-    nvs_store_jwt(creds.jwt);
+    // Store JWT in NvsJwt for MqttPublisher (only if provided)
+    if (creds.jwt.length() > 0) {
+        nvs_store_jwt(creds.jwt);
+    }
 
     // Attempt Wi-Fi connection with new credentials
     WiFi.disconnect(true);
@@ -129,8 +131,10 @@ static void onProvisionReceived(const WifiCredentials& creds) {
                              WiFi.localIP().toString().c_str(), WiFi.RSSI());
         wifiProvisioned = true;
 
-        // Start MQTT with new JWT
-        mqtt.setJwt(creds.jwt);
+        // Start MQTT with new JWT (if available)
+        if (creds.jwt.length() > 0) {
+            mqtt.setJwt(creds.jwt);
+        }
         mqtt.begin(deviceId);
 
         // Sync NTP now that we have network

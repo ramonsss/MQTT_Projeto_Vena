@@ -1,6 +1,7 @@
 #pragma once
 
 #include <NimBLEDevice.h>
+#include <ArduinoJson.h>
 #include "config.h"
 #include "BleManager.h"
 
@@ -9,16 +10,20 @@ public:
     explicit VenaServerCallbacks(BleManager& mgr) : _mgr(mgr) {}
 
     void onConnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo) override {
-        _mgr._clientConnected = true;
-        Serial.print("[BLE] client connected, addr=");
-        Serial.println(connInfo.getAddress().toString().c_str());
+        _mgr._clientCount++;
+        Serial.printf("[BLE] client connected (%d total), addr=%s\n",
+                      _mgr._clientCount,
+                      connInfo.getAddress().toString().c_str());
         // Request higher MTU for JSON payloads
         pServer->setDataLen(connInfo.getConnHandle(), BLE_MTU);
+        // Re-advertise so other clients can still discover this device
+        _mgr.startAdvertising();
     }
 
     void onDisconnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo, int reason) override {
-        _mgr._clientConnected = false;
-        Serial.printf("[BLE] client disconnected, reason=%d\n", reason);
+        if (_mgr._clientCount > 0) _mgr._clientCount--;
+        Serial.printf("[BLE] client disconnected (%d remain), reason=%d\n",
+                      _mgr._clientCount, reason);
         // Resume advertising so another client can connect
         _mgr.startAdvertising();
     }
@@ -37,36 +42,37 @@ public:
 
         Serial.println("[BLE] wifi_provisioning write received");
 
-        // Parse JSON: {"ssid":"...","psk":"...","jwt":"..."}
-        // Minimal parsing without ArduinoJson to save stack in callback context
-        String raw = String(value.c_str());
+        // Parse JSON with ArduinoJson — order-independent, robust.
+        JsonDocument doc;
+        DeserializationError err = deserializeJson(doc, value.c_str(), value.size());
+        if (err) {
+            Serial.printf("[BLE] provision JSON parse error: %s\n", err.c_str());
+            return;
+        }
+
+        // ssid and psk are mandatory
+        if (!doc["ssid"].is<const char*>() || !doc["psk"].is<const char*>()) {
+            Serial.println("[BLE] provision parse error: missing ssid or psk");
+            return;
+        }
+
         WifiCredentials creds;
+        creds.ssid = String(doc["ssid"].as<const char*>());
+        creds.psk  = String(doc["psk"].as<const char*>());
 
-        int ssidStart = raw.indexOf("\"ssid\":\"") + 8;
-        int ssidEnd = raw.indexOf("\"", ssidStart);
-        if (ssidStart < 8 || ssidEnd < 0) {
-            Serial.println("[BLE] provision parse error: missing ssid");
+        // JWT is optional — device can operate without auth in demo mode
+        if (doc["jwt"].is<const char*>()) {
+            creds.jwt = String(doc["jwt"].as<const char*>());
+        }
+
+        if (creds.ssid.isEmpty() || creds.psk.length() < 8) {
+            Serial.println("[BLE] provision error: ssid empty or psk < 8 chars");
             return;
         }
-        creds.ssid = raw.substring(ssidStart, ssidEnd);
 
-        int pskStart = raw.indexOf("\"psk\":\"") + 7;
-        int pskEnd = raw.indexOf("\"", pskStart);
-        if (pskStart < 7 || pskEnd < 0) {
-            Serial.println("[BLE] provision parse error: missing psk");
-            return;
-        }
-        creds.psk = raw.substring(pskStart, pskEnd);
-
-        int jwtStart = raw.indexOf("\"jwt\":\"") + 7;
-        int jwtEnd = raw.indexOf("\"", jwtStart);
-        if (jwtStart < 7 || jwtEnd < 0) {
-            Serial.println("[BLE] provision parse error: missing jwt");
-            return;
-        }
-        creds.jwt = raw.substring(jwtStart, jwtEnd);
-
-        Serial.printf("[BLE] parsed provision: ssid=%s\n", creds.ssid.c_str());
+        Serial.printf("[BLE] parsed provision: ssid=%s, jwt=%s\n",
+                      creds.ssid.c_str(),
+                      creds.jwt.isEmpty() ? "(none)" : "present");
 
         if (_mgr._provisionCb) {
             _mgr._provisionCb(creds);
