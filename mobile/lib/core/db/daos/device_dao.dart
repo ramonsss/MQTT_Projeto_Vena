@@ -21,4 +21,10 @@ class DeviceDao extends DatabaseAccessor<AppDatabase> with _$DeviceDaoMixin {
       (update(devices)..where((t) => t.deviceId.equals(deviceId))).write(
         DevicesCompanion(alias: Value(alias)),
       );
+
+  // Update only the storedContent field (local-only, no outbox).
+  Future<void> updateStoredContent(String deviceId, String? content) =>
+      (update(devices)..where((t) => t.deviceId.equals(deviceId))).write(
+        DevicesCompanion(storedContent: Value(content)),
+      );
 }

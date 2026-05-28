@@ -1,4 +1,4 @@
-// E4 — PairingSuccessStep: confirmation with alias input.
+// E4 — PairingSuccessStep: confirmation with alias + stored-content input.
 
 import 'package:flutter/material.dart';
 
@@ -6,6 +6,7 @@ import '../../../../core/theme/colors.dart';
 import '../../../../design_system/components/vena_button.dart';
 import '../../../../design_system/tokens.dart';
 import '../../../../design_system/typography.dart';
+import 'stored_content_selector.dart';
 
 class PairingSuccessStep extends StatefulWidget {
   const PairingSuccessStep({
@@ -13,7 +14,8 @@ class PairingSuccessStep extends StatefulWidget {
     required this.onFinish,
   });
 
-  final void Function(String alias) onFinish;
+  /// [alias] may be empty (user skipped); [storedContent] may be null.
+  final void Function(String alias, String? storedContent) onFinish;
 
   @override
   State<PairingSuccessStep> createState() => _PairingSuccessStepState();
@@ -22,6 +24,7 @@ class PairingSuccessStep extends StatefulWidget {
 class _PairingSuccessStepState extends State<PairingSuccessStep>
     with SingleTickerProviderStateMixin {
   final _controller = TextEditingController();
+  String? _storedContent;
   late final AnimationController _anim;
   late final Animation<double> _scale;
 
@@ -85,18 +88,23 @@ class _PairingSuccessStepState extends State<PairingSuccessStep>
                 borderRadius: BorderRadius.circular(VenaRadius.md),
               ),
             ),
-            onSubmitted: (_) => widget.onFinish(_controller.text),
+            onSubmitted: (_) =>
+                widget.onFinish(_controller.text, _storedContent),
+          ),
+          const SizedBox(height: VenaSpacing.xl),
+          StoredContentSelector(
+            onChanged: (value) => setState(() => _storedContent = value),
           ),
           const SizedBox(height: VenaSpacing.xl),
           VenaButton(
             label: 'Concluir',
-            onPressed: () => widget.onFinish(_controller.text),
+            onPressed: () => widget.onFinish(_controller.text, _storedContent),
           ),
           const SizedBox(height: VenaSpacing.md),
           VenaButton(
             label: 'Pular',
             variant: VenaButtonVariant.ghost,
-            onPressed: () => widget.onFinish(''),
+            onPressed: () => widget.onFinish('', null),
           ),
         ],
       ),

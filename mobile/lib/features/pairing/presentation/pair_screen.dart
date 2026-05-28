@@ -23,6 +23,10 @@ import 'widgets/ble_scan_step.dart';
 import 'widgets/pairing_success_step.dart';
 import 'widgets/wifi_provision_step.dart';
 
+/// When `true`, the QR scanner step is replaced by a button that simulates
+/// a QR detection with fake data. Override in main_mock.dart.
+final mockQrBypassProvider = Provider<bool>((_) => false);
+
 class PairScreen extends ConsumerStatefulWidget {
   const PairScreen({super.key});
 
@@ -104,12 +108,19 @@ class _PairScreenState extends ConsumerState<PairScreen> {
   // ── Body dispatcher ──────────────────────────────────────────────────────
 
   Widget _buildBody(BuildContext context, PairingState state) {
+    final isMockQr = ref.watch(mockQrBypassProvider);
+
     return switch (state.step) {
-      PairingStep.idle => _ScanStep(
-          controller: _scannerController,
-          onDetect: (raw) =>
-              ref.read(pairingNotifierProvider.notifier).onQrDetected(raw),
-        ),
+      PairingStep.idle => isMockQr
+          ? _MockScanStep(
+              onDetect: (raw) =>
+                  ref.read(pairingNotifierProvider.notifier).onQrDetected(raw),
+            )
+          : _ScanStep(
+              controller: _scannerController,
+              onDetect: (raw) =>
+                  ref.read(pairingNotifierProvider.notifier).onQrDetected(raw),
+            ),
       PairingStep.confirming => _ConfirmStep(
           deviceId: state.deviceId ?? '',
           pairingCode: state.pairingCode ?? '',
@@ -142,9 +153,9 @@ class _PairScreenState extends ConsumerState<PairScreen> {
         ),
       PairingStep.claiming => const _LoadingStep(message: 'Pareando dispositivo...'),
       PairingStep.naming => PairingSuccessStep(
-          onFinish: (alias) => ref
+          onFinish: (alias, storedContent) => ref
               .read(pairingNotifierProvider.notifier)
-              .finishWithAlias(alias),
+              .finishWithAlias(alias, storedContent),
         ),
       PairingStep.success => const SizedBox.shrink(),
       PairingStep.error => _ErrorStep(
@@ -412,6 +423,42 @@ class _ErrorStep extends StatelessWidget {
             ),
             const SizedBox(height: VenaSpacing.xxl),
             VenaButton(label: 'Tentar novamente', onPressed: onRetry),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Mock scan step (used in main_mock to bypass camera) ───────────────────────
+
+class _MockScanStep extends StatelessWidget {
+  const _MockScanStep({required this.onDetect});
+
+  final ValueChanged<String> onDetect;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(VenaSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.qr_code_scanner, size: 80, color: Color(0xFF5F6C37)),
+            const SizedBox(height: VenaSpacing.xxl),
+            Text(
+              'Modo mock — câmera desabilitada.',
+              textAlign: TextAlign.center,
+              style: VenaTypography.bodyMedium,
+            ),
+            const SizedBox(height: VenaSpacing.xxxl),
+            VenaButton(
+              label: 'Simular QR detectado',
+              onPressed: () => onDetect(
+                'vena://vena-d0ef763235f4?code=8A4A-4AF1',
+              ),
+            ),
           ],
         ),
       ),

@@ -27,6 +27,7 @@ import 'core/ble/ble_provider.dart';
 import 'core/ble/ble_service.dart';
 import 'core/db/app_database.dart';
 import 'core/network/device_api.dart';
+import 'features/pairing/presentation/pair_screen.dart';
 
 // ── Fake token storage ───────────────────────────────────────────────────────
 
@@ -66,6 +67,7 @@ Future<void> _seedDatabase(AppDatabase db) async {
     status: const Value('online'),
     lastSeenAt: Value(now),
     fwVersion: const Value('1.3.0'),
+    storedContent: const Value('Cacau'),
   ));
   await db.telemetryDao.upsertLatestState(LatestStatesCompanion(
     deviceId: const Value('vena-a1b2c3'),
@@ -380,6 +382,7 @@ void main() async {
             .overrideWithValue(_MockSecureStorage()),
         deviceApiProvider.overrideWithValue(_buildMockDeviceApi()),
         bleServiceProvider.overrideWithValue(_MockBleService()),
+        mockQrBypassProvider.overrideWithValue(true),
       ],
       child: const VenaApp(),
     ),

@@ -43,12 +43,12 @@ class DeviceCard extends ConsumerWidget {
     final displayName =
         device.alias.isNotEmpty ? device.alias : device.deviceId;
 
-    return VenaCard(
+    final card = VenaCard(
       onTap: onTap,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // ── Left: name + connection badge ─────────────────────────────
+          // ── Left: name + connection badge ──────────────────────────
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -68,14 +68,12 @@ class DeviceCard extends ConsumerWidget {
 
           const SizedBox(width: VenaSpacing.lg),
 
-          // ── Right: ambient temperature ─────────────────────────────────
+          // ── Right: ambient temperature ─────────────────────────────
           MetricTile(
             value: latest?.ambientT,
             unit: '°C',
             label: 'Temp.',
             isLoading: latestAsync.isLoading,
-            // Use a smaller style than the default metricMedium (40 px)
-            // so the number fits comfortably inside a list card.
             metricStyle: GoogleFonts.fraunces(
               fontSize: 28,
               fontWeight: FontWeight.w600,
@@ -87,6 +85,64 @@ class DeviceCard extends ConsumerWidget {
           ),
         ],
       ),
+    );
+
+    if (device.storedContent == null || device.storedContent!.isEmpty) {
+      return card;
+    }
+
+    // Dot sits on top of the card at the bottom-right, inside the card padding.
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        card,
+        Positioned(
+          bottom: 8,
+          right: 10,
+          child: _ContentDot(content: device.storedContent!),
+        ),
+      ],
+    );
+  }
+}
+
+/// Small circle in the bottom-right of the card indicating stored content.
+class _ContentDot extends StatelessWidget {
+  const _ContentDot({required this.content});
+
+  final String content;
+
+  Color _colorFor(String label) => switch (label.toLowerCase()) {
+        'cacau' => const Color(0xFF6B4226),
+        'pimenta-do-reino' => const Color(0xFF2C2C2C),
+        _ => const Color(0xFF6C6B5C),
+      };
+
+  IconData _iconFor(String label) => switch (label.toLowerCase()) {
+        'cacau' => Icons.spa_outlined,
+        'pimenta-do-reino' => Icons.scatter_plot,
+        _ => Icons.inventory_2_outlined,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _colorFor(content);
+    return Container(
+      width: 22,
+      height: 22,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.35),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      alignment: Alignment.center,
+      child: Icon(_iconFor(content), size: 12, color: Colors.white),
     );
   }
 }

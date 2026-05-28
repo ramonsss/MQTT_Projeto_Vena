@@ -180,7 +180,7 @@ class _SmokePairingNotifier extends PairingNotifier {
   }
 
   @override
-  Future<void> finishWithAlias(String alias) async {
+  Future<void> finishWithAlias(String alias, String? storedContent) async {
     state = state.copyWith(step: PairingStep.success, alias: alias.trim());
   }
 }

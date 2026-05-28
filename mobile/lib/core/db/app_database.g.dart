@@ -40,9 +40,15 @@ class $DevicesTable extends Devices with TableInfo<$DevicesTable, Device> {
   late final GeneratedColumn<String> fwVersion = GeneratedColumn<String>(
       'fw_version', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _storedContentMeta =
+      const VerificationMeta('storedContent');
+  @override
+  late final GeneratedColumn<String> storedContent = GeneratedColumn<String>(
+      'stored_content', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns =>
-      [deviceId, alias, status, lastSeenAt, fwVersion];
+      [deviceId, alias, status, lastSeenAt, fwVersion, storedContent];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -77,6 +83,12 @@ class $DevicesTable extends Devices with TableInfo<$DevicesTable, Device> {
       context.handle(_fwVersionMeta,
           fwVersion.isAcceptableOrUnknown(data['fw_version']!, _fwVersionMeta));
     }
+    if (data.containsKey('stored_content')) {
+      context.handle(
+          _storedContentMeta,
+          storedContent.isAcceptableOrUnknown(
+              data['stored_content']!, _storedContentMeta));
+    }
     return context;
   }
 
@@ -96,6 +108,8 @@ class $DevicesTable extends Devices with TableInfo<$DevicesTable, Device> {
           .read(DriftSqlType.int, data['${effectivePrefix}last_seen_at']),
       fwVersion: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}fw_version']),
+      storedContent: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}stored_content']),
     );
   }
 
@@ -111,12 +125,14 @@ class Device extends DataClass implements Insertable<Device> {
   final String status;
   final int? lastSeenAt;
   final String? fwVersion;
+  final String? storedContent;
   const Device(
       {required this.deviceId,
       required this.alias,
       required this.status,
       this.lastSeenAt,
-      this.fwVersion});
+      this.fwVersion,
+      this.storedContent});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -128,6 +144,9 @@ class Device extends DataClass implements Insertable<Device> {
     }
     if (!nullToAbsent || fwVersion != null) {
       map['fw_version'] = Variable<String>(fwVersion);
+    }
+    if (!nullToAbsent || storedContent != null) {
+      map['stored_content'] = Variable<String>(storedContent);
     }
     return map;
   }
@@ -143,6 +162,9 @@ class Device extends DataClass implements Insertable<Device> {
       fwVersion: fwVersion == null && nullToAbsent
           ? const Value.absent()
           : Value(fwVersion),
+      storedContent: storedContent == null && nullToAbsent
+          ? const Value.absent()
+          : Value(storedContent),
     );
   }
 
@@ -155,6 +177,7 @@ class Device extends DataClass implements Insertable<Device> {
       status: serializer.fromJson<String>(json['status']),
       lastSeenAt: serializer.fromJson<int?>(json['lastSeenAt']),
       fwVersion: serializer.fromJson<String?>(json['fwVersion']),
+      storedContent: serializer.fromJson<String?>(json['storedContent']),
     );
   }
   @override
@@ -166,6 +189,7 @@ class Device extends DataClass implements Insertable<Device> {
       'status': serializer.toJson<String>(status),
       'lastSeenAt': serializer.toJson<int?>(lastSeenAt),
       'fwVersion': serializer.toJson<String?>(fwVersion),
+      'storedContent': serializer.toJson<String?>(storedContent),
     };
   }
 
@@ -174,13 +198,16 @@ class Device extends DataClass implements Insertable<Device> {
           String? alias,
           String? status,
           Value<int?> lastSeenAt = const Value.absent(),
-          Value<String?> fwVersion = const Value.absent()}) =>
+          Value<String?> fwVersion = const Value.absent(),
+          Value<String?> storedContent = const Value.absent()}) =>
       Device(
         deviceId: deviceId ?? this.deviceId,
         alias: alias ?? this.alias,
         status: status ?? this.status,
         lastSeenAt: lastSeenAt.present ? lastSeenAt.value : this.lastSeenAt,
         fwVersion: fwVersion.present ? fwVersion.value : this.fwVersion,
+        storedContent:
+            storedContent.present ? storedContent.value : this.storedContent,
       );
   Device copyWithCompanion(DevicesCompanion data) {
     return Device(
@@ -190,6 +217,9 @@ class Device extends DataClass implements Insertable<Device> {
       lastSeenAt:
           data.lastSeenAt.present ? data.lastSeenAt.value : this.lastSeenAt,
       fwVersion: data.fwVersion.present ? data.fwVersion.value : this.fwVersion,
+      storedContent: data.storedContent.present
+          ? data.storedContent.value
+          : this.storedContent,
     );
   }
 
@@ -200,14 +230,15 @@ class Device extends DataClass implements Insertable<Device> {
           ..write('alias: $alias, ')
           ..write('status: $status, ')
           ..write('lastSeenAt: $lastSeenAt, ')
-          ..write('fwVersion: $fwVersion')
+          ..write('fwVersion: $fwVersion, ')
+          ..write('storedContent: $storedContent')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(deviceId, alias, status, lastSeenAt, fwVersion);
+  int get hashCode => Object.hash(
+      deviceId, alias, status, lastSeenAt, fwVersion, storedContent);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -216,7 +247,8 @@ class Device extends DataClass implements Insertable<Device> {
           other.alias == this.alias &&
           other.status == this.status &&
           other.lastSeenAt == this.lastSeenAt &&
-          other.fwVersion == this.fwVersion);
+          other.fwVersion == this.fwVersion &&
+          other.storedContent == this.storedContent);
 }
 
 class DevicesCompanion extends UpdateCompanion<Device> {
@@ -225,6 +257,7 @@ class DevicesCompanion extends UpdateCompanion<Device> {
   final Value<String> status;
   final Value<int?> lastSeenAt;
   final Value<String?> fwVersion;
+  final Value<String?> storedContent;
   final Value<int> rowid;
   const DevicesCompanion({
     this.deviceId = const Value.absent(),
@@ -232,6 +265,7 @@ class DevicesCompanion extends UpdateCompanion<Device> {
     this.status = const Value.absent(),
     this.lastSeenAt = const Value.absent(),
     this.fwVersion = const Value.absent(),
+    this.storedContent = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   DevicesCompanion.insert({
@@ -240,6 +274,7 @@ class DevicesCompanion extends UpdateCompanion<Device> {
     this.status = const Value.absent(),
     this.lastSeenAt = const Value.absent(),
     this.fwVersion = const Value.absent(),
+    this.storedContent = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : deviceId = Value(deviceId);
   static Insertable<Device> custom({
@@ -248,6 +283,7 @@ class DevicesCompanion extends UpdateCompanion<Device> {
     Expression<String>? status,
     Expression<int>? lastSeenAt,
     Expression<String>? fwVersion,
+    Expression<String>? storedContent,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -256,6 +292,7 @@ class DevicesCompanion extends UpdateCompanion<Device> {
       if (status != null) 'status': status,
       if (lastSeenAt != null) 'last_seen_at': lastSeenAt,
       if (fwVersion != null) 'fw_version': fwVersion,
+      if (storedContent != null) 'stored_content': storedContent,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -266,6 +303,7 @@ class DevicesCompanion extends UpdateCompanion<Device> {
       Value<String>? status,
       Value<int?>? lastSeenAt,
       Value<String?>? fwVersion,
+      Value<String?>? storedContent,
       Value<int>? rowid}) {
     return DevicesCompanion(
       deviceId: deviceId ?? this.deviceId,
@@ -273,6 +311,7 @@ class DevicesCompanion extends UpdateCompanion<Device> {
       status: status ?? this.status,
       lastSeenAt: lastSeenAt ?? this.lastSeenAt,
       fwVersion: fwVersion ?? this.fwVersion,
+      storedContent: storedContent ?? this.storedContent,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -295,6 +334,9 @@ class DevicesCompanion extends UpdateCompanion<Device> {
     if (fwVersion.present) {
       map['fw_version'] = Variable<String>(fwVersion.value);
     }
+    if (storedContent.present) {
+      map['stored_content'] = Variable<String>(storedContent.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -309,6 +351,7 @@ class DevicesCompanion extends UpdateCompanion<Device> {
           ..write('status: $status, ')
           ..write('lastSeenAt: $lastSeenAt, ')
           ..write('fwVersion: $fwVersion, ')
+          ..write('storedContent: $storedContent, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1678,6 +1721,7 @@ typedef $$DevicesTableCreateCompanionBuilder = DevicesCompanion Function({
   Value<String> status,
   Value<int?> lastSeenAt,
   Value<String?> fwVersion,
+  Value<String?> storedContent,
   Value<int> rowid,
 });
 typedef $$DevicesTableUpdateCompanionBuilder = DevicesCompanion Function({
@@ -1686,6 +1730,7 @@ typedef $$DevicesTableUpdateCompanionBuilder = DevicesCompanion Function({
   Value<String> status,
   Value<int?> lastSeenAt,
   Value<String?> fwVersion,
+  Value<String?> storedContent,
   Value<int> rowid,
 });
 
@@ -1712,6 +1757,9 @@ class $$DevicesTableFilterComposer
 
   ColumnFilters<String> get fwVersion => $composableBuilder(
       column: $table.fwVersion, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get storedContent => $composableBuilder(
+      column: $table.storedContent, builder: (column) => ColumnFilters(column));
 }
 
 class $$DevicesTableOrderingComposer
@@ -1737,6 +1785,10 @@ class $$DevicesTableOrderingComposer
 
   ColumnOrderings<String> get fwVersion => $composableBuilder(
       column: $table.fwVersion, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get storedContent => $composableBuilder(
+      column: $table.storedContent,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$DevicesTableAnnotationComposer
@@ -1762,6 +1814,9 @@ class $$DevicesTableAnnotationComposer
 
   GeneratedColumn<String> get fwVersion =>
       $composableBuilder(column: $table.fwVersion, builder: (column) => column);
+
+  GeneratedColumn<String> get storedContent => $composableBuilder(
+      column: $table.storedContent, builder: (column) => column);
 }
 
 class $$DevicesTableTableManager extends RootTableManager<
@@ -1792,6 +1847,7 @@ class $$DevicesTableTableManager extends RootTableManager<
             Value<String> status = const Value.absent(),
             Value<int?> lastSeenAt = const Value.absent(),
             Value<String?> fwVersion = const Value.absent(),
+            Value<String?> storedContent = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               DevicesCompanion(
@@ -1800,6 +1856,7 @@ class $$DevicesTableTableManager extends RootTableManager<
             status: status,
             lastSeenAt: lastSeenAt,
             fwVersion: fwVersion,
+            storedContent: storedContent,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -1808,6 +1865,7 @@ class $$DevicesTableTableManager extends RootTableManager<
             Value<String> status = const Value.absent(),
             Value<int?> lastSeenAt = const Value.absent(),
             Value<String?> fwVersion = const Value.absent(),
+            Value<String?> storedContent = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               DevicesCompanion.insert(
@@ -1816,6 +1874,7 @@ class $$DevicesTableTableManager extends RootTableManager<
             status: status,
             lastSeenAt: lastSeenAt,
             fwVersion: fwVersion,
+            storedContent: storedContent,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

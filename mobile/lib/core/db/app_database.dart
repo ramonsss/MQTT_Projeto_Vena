@@ -28,7 +28,16 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'vena_app'));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.addColumn(devices, devices.storedContent);
+      }
+    },
+  );
 }
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {

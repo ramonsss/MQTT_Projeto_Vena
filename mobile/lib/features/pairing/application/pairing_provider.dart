@@ -13,6 +13,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/ble/ble_models.dart';
 import '../../../core/ble/ble_provider.dart';
+import '../../../core/db/app_database.dart';
 import '../../../core/sync/device_sync_service.dart';
 import '../../devices/application/device_actions_provider.dart';
 import 'provisioning_service.dart';
@@ -37,6 +38,7 @@ class PairingState {
     this.deviceId,
     this.pairingCode,
     this.alias = '',
+    this.storedContent,
     this.errorMessage,
     this.discoveredDevices = const [],
     this.selectedBleDeviceId,
@@ -47,6 +49,7 @@ class PairingState {
   final String? deviceId;
   final String? pairingCode;
   final String alias;
+  final String? storedContent;
   final String? errorMessage;
   final List<DiscoveredVenaDevice> discoveredDevices;
   final String? selectedBleDeviceId;
@@ -57,6 +60,7 @@ class PairingState {
     String? deviceId,
     String? pairingCode,
     String? alias,
+    String? storedContent,
     String? errorMessage,
     List<DiscoveredVenaDevice>? discoveredDevices,
     String? selectedBleDeviceId,
@@ -67,6 +71,7 @@ class PairingState {
         deviceId: deviceId ?? this.deviceId,
         pairingCode: pairingCode ?? this.pairingCode,
         alias: alias ?? this.alias,
+        storedContent: storedContent ?? this.storedContent,
         errorMessage: errorMessage,
         discoveredDevices: discoveredDevices ?? this.discoveredDevices,
         selectedBleDeviceId: selectedBleDeviceId ?? this.selectedBleDeviceId,
@@ -241,7 +246,7 @@ class PairingNotifier extends _$PairingNotifier {
 
   // ── Step 6: Name ────────────────────────────────────────────────────────
 
-  Future<void> finishWithAlias(String alias) async {
+  Future<void> finishWithAlias(String alias, String? storedContent) async {
     final id = state.deviceId;
     if (id == null) return;
     if (alias.trim().isNotEmpty) {
@@ -249,11 +254,19 @@ class PairingNotifier extends _$PairingNotifier {
           .read(deviceActionsProvider.notifier)
           .renameDevice(id, alias.trim());
     }
+    if (storedContent != null && storedContent.trim().isNotEmpty) {
+      final db = ref.read(appDatabaseProvider);
+      await db.deviceDao.updateStoredContent(id, storedContent.trim());
+    }
     await ref
         .read(deviceSyncServiceProvider)
         .syncDeviceList()
         .catchError((_) {});
-    state = state.copyWith(step: PairingStep.success, alias: alias.trim());
+    state = state.copyWith(
+      step: PairingStep.success,
+      alias: alias.trim(),
+      storedContent: storedContent?.trim(),
+    );
   }
 
   // ── Reset ────────────────────────────────────────────────────────────────
