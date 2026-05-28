@@ -13,12 +13,14 @@ class VenaCard extends StatelessWidget {
     required this.child,
     this.padding = const EdgeInsets.all(VenaSpacing.xl),
     this.onTap,
+    this.onLongPress,
     this.color,
   });
 
   final Widget child;
   final EdgeInsetsGeometry padding;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   /// Background colour. Defaults to [ColorScheme.surface].
   final Color? color;
@@ -38,6 +40,7 @@ class VenaCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(VenaRadius.xl),
         child: InkWell(
           onTap: onTap,
+          onLongPress: onLongPress,
           borderRadius: BorderRadius.circular(VenaRadius.xl),
           splashColor:
               Theme.of(context).colorScheme.primary.withValues(alpha: 0.06),

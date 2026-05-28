@@ -10,6 +10,7 @@
 //   └────────────────────────────────────────────┘
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -21,6 +22,7 @@ import '../../../design_system/components/vena_card.dart';
 import '../../../design_system/tokens.dart';
 import '../../../design_system/typography.dart';
 import '../application/devices_provider.dart';
+import 'edit_device_bottom_sheet.dart';
 
 class DeviceCard extends ConsumerWidget {
   const DeviceCard({
@@ -45,6 +47,10 @@ class DeviceCard extends ConsumerWidget {
 
     final card = VenaCard(
       onTap: onTap,
+      onLongPress: () {
+        HapticFeedback.mediumImpact();
+        showEditDeviceSheet(context, device);
+      },
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [

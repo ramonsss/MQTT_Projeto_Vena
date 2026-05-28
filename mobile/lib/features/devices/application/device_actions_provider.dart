@@ -58,4 +58,12 @@ class DeviceActions extends _$DeviceActions {
       ),
     );
   }
+
+  /// Updates [storedContent] locally only — this field is not synced to the
+  /// backend in this phase. No outbox entry is created.
+  Future<void> updateStoredContent(
+      String deviceId, String? storedContent) async {
+    final db = ref.read(appDatabaseProvider);
+    await db.deviceDao.updateStoredContent(deviceId, storedContent);
+  }
 }
