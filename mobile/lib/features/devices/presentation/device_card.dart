@@ -130,9 +130,19 @@ class _ContentDot extends StatelessWidget {
         _ => Icons.inventory_2_outlined,
       };
 
+  String? _assetFor(String label) => switch (label.toLowerCase()) {
+        'cacau' => 'assets/icons/cacau-tp.PNG',
+        'pimenta-do-reino' => 'assets/icons/pimenta-icone.png',
+        _ => null,
+      };
+
+  double _scaleFor(String label) => 1.0;
+
   @override
   Widget build(BuildContext context) {
     final color = _colorFor(content);
+    final asset = _assetFor(content);
+    final scale = _scaleFor(content);
     return Container(
       width: 22,
       height: 22,
@@ -148,7 +158,18 @@ class _ContentDot extends StatelessWidget {
         ],
       ),
       alignment: Alignment.center,
-      child: Icon(_iconFor(content), size: 12, color: Colors.white),
+      child: asset != null
+          ? ClipOval(
+              child: Image.asset(
+                asset,
+                width: 22 * scale,
+                height: 22 * scale,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) =>
+                    Icon(_iconFor(content), size: 12, color: Colors.white),
+              ),
+            )
+          : Icon(_iconFor(content), size: 12, color: Colors.white),
     );
   }
 }

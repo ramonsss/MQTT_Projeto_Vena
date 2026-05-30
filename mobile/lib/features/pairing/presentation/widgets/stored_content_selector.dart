@@ -21,9 +21,10 @@ extension _ContentOptionData on _ContentOption {
         _ContentOption.pimenta => const Color(0xFF2C2C2C),
       };
 
-  IconData get chipIcon => switch (this) {
-        _ContentOption.cacau => Icons.spa_outlined,
-        _ContentOption.pimenta => Icons.scatter_plot,
+  /// Asset path for the icon.
+  String? get iconAsset => switch (this) {
+        _ContentOption.cacau => 'assets/icons/cacau-tp.PNG',
+        _ContentOption.pimenta => 'assets/icons/pimenta-icone.png',
       };
 }
 
@@ -121,13 +122,26 @@ class _StoredContentSelectorState extends State<StoredContentSelector> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(option.chipIcon, size: 16, color: Colors.white),
-            const SizedBox(width: VenaSpacing.xs),
-            Text(
-              option.label,
-              style: VenaTypography.labelMedium.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
+            if (option.iconAsset != null) ...[
+              Transform.translate(
+                offset: Offset(option == _ContentOption.pimenta ? -1.0 : 0.0, 0),
+                child: Image.asset(
+                  option.iconAsset!,
+                  width: 36,
+                  height: 36,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                ),
+              ),
+              const SizedBox(width: 0),
+            ],
+            Transform.translate(
+              offset: const Offset(-1.0, 0),
+              child: Text(
+                option.label,
+                style: VenaTypography.labelMedium.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
