@@ -17,6 +17,7 @@ public:
     void begin(const char* deviceId);
     void loop();
     bool publishTelemetry(const String& json);
+    bool publishMeta(const String& json);
     void onCommand(CommandHandler cb);
     bool isConnected() const;
 
@@ -38,6 +39,7 @@ private:
     String _topicTelemetry;
     String _topicStatus;
     String _topicCmd;
+    String _topicMeta;
 
     String _jwtCredential;
 

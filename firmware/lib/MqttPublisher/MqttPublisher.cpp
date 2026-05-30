@@ -12,6 +12,7 @@ void MqttPublisher::begin(const char* deviceId) {
     _topicTelemetry = String("vena/") + deviceId + "/telemetry";
     _topicStatus = String("vena/") + deviceId + "/status";
     _topicCmd = String("vena/") + deviceId + "/cmd";
+    _topicMeta = String("vena/") + deviceId + "/meta";
 
     WiFi.mode(WIFI_STA);
     WiFi.setAutoReconnect(true);
@@ -37,6 +38,13 @@ void MqttPublisher::loop() {
 bool MqttPublisher::publishTelemetry(const String& json) {
     if (!isConnected()) return false;
     return _mqtt.publish(_topicTelemetry.c_str(), json.c_str(), false);
+}
+
+bool MqttPublisher::publishMeta(const String& json) {
+    if (!isConnected()) return false;
+    // QoS 1, retain=true — the broker keeps the last meta payload so the
+    // backend can recover it after a restart and late subscribers see it.
+    return _mqtt.publish(_topicMeta.c_str(), json.c_str(), true);
 }
 
 void MqttPublisher::onCommand(CommandHandler cb) {

@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from sqlalchemy import insert, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from app.db.models import Device, TelemetryRaw
+from app.db.models import Device, DeviceMeta, TelemetryRaw
 from app.db.session import async_session_factory
 from app.mqtt.topics import parse_topic
 from app.shared.logging import get_logger
@@ -40,6 +40,10 @@ class TelemetryIngestor:
         while not self._queue.empty():
             try:
                 topic, payload = self._queue.get_nowait()
+                parsed = parse_topic(topic)
+                if parsed is not None and parsed[1] == "meta":
+                    await self._handle_meta(parsed[0], payload)
+                    continue
                 row = self._parse(topic, payload)
                 if row:
                     remaining.append(row)
@@ -58,9 +62,13 @@ class TelemetryIngestor:
                 topic, payload = await asyncio.wait_for(
                     self._queue.get(), timeout=max(timeout, 0.05)
                 )
-                row = self._parse(topic, payload)
-                if row:
-                    batch.append(row)
+                parsed = parse_topic(topic)
+                if parsed is not None and parsed[1] == "meta":
+                    await self._handle_meta(parsed[0], payload)
+                else:
+                    row = self._parse(topic, payload)
+                    if row:
+                        batch.append(row)
             except asyncio.TimeoutError:
                 pass
 
@@ -154,3 +162,36 @@ class TelemetryIngestor:
                 await session.execute(stmt)
 
         log.debug("Flushed {} telemetry rows for devices: {}", len(rows), device_ids)
+
+    async def _handle_meta(self, device_id: str, payload: bytes) -> None:
+        """UPSERT a vena/{id}/meta payload into device_meta (Phase 5)."""
+        try:
+            data: dict = json.loads(payload)
+        except json.JSONDecodeError:
+            log.warning("Invalid JSON in meta from {}: {}", device_id, payload[:80])
+            return
+
+        now = datetime.now(tz=timezone.utc)
+        async with async_session_factory() as session:
+            async with session.begin():
+                # Auto-register if unknown — same convention as telemetry path.
+                await session.execute(
+                    pg_insert(Device).values(
+                        id=device_id,
+                        pairing_code_hash="unprovisioned",
+                        status="online",
+                        first_seen_at=now,
+                        last_seen_at=now,
+                    ).on_conflict_do_nothing(index_elements=["id"])
+                )
+                stmt = pg_insert(DeviceMeta).values(
+                    device_id=device_id,
+                    payload=data,
+                    updated_at=now,
+                )
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=["device_id"],
+                    set_={"payload": data, "updated_at": now},
+                )
+                await session.execute(stmt)
+        log.debug("Upserted meta for {}", device_id)

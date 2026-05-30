@@ -1209,6 +1209,354 @@ class TelemetryCacheCompanion extends UpdateCompanion<TelemetryCacheData> {
   }
 }
 
+class $HistoryCacheTable extends HistoryCache
+    with TableInfo<$HistoryCacheTable, HistoryCacheData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $HistoryCacheTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _deviceIdMeta =
+      const VerificationMeta('deviceId');
+  @override
+  late final GeneratedColumn<String> deviceId = GeneratedColumn<String>(
+      'device_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _bucketMeta = const VerificationMeta('bucket');
+  @override
+  late final GeneratedColumn<String> bucket = GeneratedColumn<String>(
+      'bucket', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _rangeKeyMeta =
+      const VerificationMeta('rangeKey');
+  @override
+  late final GeneratedColumn<String> rangeKey = GeneratedColumn<String>(
+      'range_key', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _payloadMeta =
+      const VerificationMeta('payload');
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+      'payload', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _fetchedAtMeta =
+      const VerificationMeta('fetchedAt');
+  @override
+  late final GeneratedColumn<int> fetchedAt = GeneratedColumn<int>(
+      'fetched_at', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _maxTsMeta = const VerificationMeta('maxTs');
+  @override
+  late final GeneratedColumn<int> maxTs = GeneratedColumn<int>(
+      'max_ts', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [deviceId, bucket, rangeKey, payload, fetchedAt, maxTs];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'history_cache';
+  @override
+  VerificationContext validateIntegrity(Insertable<HistoryCacheData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('device_id')) {
+      context.handle(_deviceIdMeta,
+          deviceId.isAcceptableOrUnknown(data['device_id']!, _deviceIdMeta));
+    } else if (isInserting) {
+      context.missing(_deviceIdMeta);
+    }
+    if (data.containsKey('bucket')) {
+      context.handle(_bucketMeta,
+          bucket.isAcceptableOrUnknown(data['bucket']!, _bucketMeta));
+    } else if (isInserting) {
+      context.missing(_bucketMeta);
+    }
+    if (data.containsKey('range_key')) {
+      context.handle(_rangeKeyMeta,
+          rangeKey.isAcceptableOrUnknown(data['range_key']!, _rangeKeyMeta));
+    } else if (isInserting) {
+      context.missing(_rangeKeyMeta);
+    }
+    if (data.containsKey('payload')) {
+      context.handle(_payloadMeta,
+          payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta));
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    if (data.containsKey('fetched_at')) {
+      context.handle(_fetchedAtMeta,
+          fetchedAt.isAcceptableOrUnknown(data['fetched_at']!, _fetchedAtMeta));
+    } else if (isInserting) {
+      context.missing(_fetchedAtMeta);
+    }
+    if (data.containsKey('max_ts')) {
+      context.handle(
+          _maxTsMeta, maxTs.isAcceptableOrUnknown(data['max_ts']!, _maxTsMeta));
+    } else if (isInserting) {
+      context.missing(_maxTsMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {deviceId, bucket, rangeKey};
+  @override
+  HistoryCacheData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return HistoryCacheData(
+      deviceId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}device_id'])!,
+      bucket: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}bucket'])!,
+      rangeKey: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}range_key'])!,
+      payload: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}payload'])!,
+      fetchedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}fetched_at'])!,
+      maxTs: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}max_ts'])!,
+    );
+  }
+
+  @override
+  $HistoryCacheTable createAlias(String alias) {
+    return $HistoryCacheTable(attachedDatabase, alias);
+  }
+}
+
+class HistoryCacheData extends DataClass
+    implements Insertable<HistoryCacheData> {
+  final String deviceId;
+  final String bucket;
+  final String rangeKey;
+  final String payload;
+  final int fetchedAt;
+  final int maxTs;
+  const HistoryCacheData(
+      {required this.deviceId,
+      required this.bucket,
+      required this.rangeKey,
+      required this.payload,
+      required this.fetchedAt,
+      required this.maxTs});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['device_id'] = Variable<String>(deviceId);
+    map['bucket'] = Variable<String>(bucket);
+    map['range_key'] = Variable<String>(rangeKey);
+    map['payload'] = Variable<String>(payload);
+    map['fetched_at'] = Variable<int>(fetchedAt);
+    map['max_ts'] = Variable<int>(maxTs);
+    return map;
+  }
+
+  HistoryCacheCompanion toCompanion(bool nullToAbsent) {
+    return HistoryCacheCompanion(
+      deviceId: Value(deviceId),
+      bucket: Value(bucket),
+      rangeKey: Value(rangeKey),
+      payload: Value(payload),
+      fetchedAt: Value(fetchedAt),
+      maxTs: Value(maxTs),
+    );
+  }
+
+  factory HistoryCacheData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return HistoryCacheData(
+      deviceId: serializer.fromJson<String>(json['deviceId']),
+      bucket: serializer.fromJson<String>(json['bucket']),
+      rangeKey: serializer.fromJson<String>(json['rangeKey']),
+      payload: serializer.fromJson<String>(json['payload']),
+      fetchedAt: serializer.fromJson<int>(json['fetchedAt']),
+      maxTs: serializer.fromJson<int>(json['maxTs']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'deviceId': serializer.toJson<String>(deviceId),
+      'bucket': serializer.toJson<String>(bucket),
+      'rangeKey': serializer.toJson<String>(rangeKey),
+      'payload': serializer.toJson<String>(payload),
+      'fetchedAt': serializer.toJson<int>(fetchedAt),
+      'maxTs': serializer.toJson<int>(maxTs),
+    };
+  }
+
+  HistoryCacheData copyWith(
+          {String? deviceId,
+          String? bucket,
+          String? rangeKey,
+          String? payload,
+          int? fetchedAt,
+          int? maxTs}) =>
+      HistoryCacheData(
+        deviceId: deviceId ?? this.deviceId,
+        bucket: bucket ?? this.bucket,
+        rangeKey: rangeKey ?? this.rangeKey,
+        payload: payload ?? this.payload,
+        fetchedAt: fetchedAt ?? this.fetchedAt,
+        maxTs: maxTs ?? this.maxTs,
+      );
+  HistoryCacheData copyWithCompanion(HistoryCacheCompanion data) {
+    return HistoryCacheData(
+      deviceId: data.deviceId.present ? data.deviceId.value : this.deviceId,
+      bucket: data.bucket.present ? data.bucket.value : this.bucket,
+      rangeKey: data.rangeKey.present ? data.rangeKey.value : this.rangeKey,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      fetchedAt: data.fetchedAt.present ? data.fetchedAt.value : this.fetchedAt,
+      maxTs: data.maxTs.present ? data.maxTs.value : this.maxTs,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HistoryCacheData(')
+          ..write('deviceId: $deviceId, ')
+          ..write('bucket: $bucket, ')
+          ..write('rangeKey: $rangeKey, ')
+          ..write('payload: $payload, ')
+          ..write('fetchedAt: $fetchedAt, ')
+          ..write('maxTs: $maxTs')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(deviceId, bucket, rangeKey, payload, fetchedAt, maxTs);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is HistoryCacheData &&
+          other.deviceId == this.deviceId &&
+          other.bucket == this.bucket &&
+          other.rangeKey == this.rangeKey &&
+          other.payload == this.payload &&
+          other.fetchedAt == this.fetchedAt &&
+          other.maxTs == this.maxTs);
+}
+
+class HistoryCacheCompanion extends UpdateCompanion<HistoryCacheData> {
+  final Value<String> deviceId;
+  final Value<String> bucket;
+  final Value<String> rangeKey;
+  final Value<String> payload;
+  final Value<int> fetchedAt;
+  final Value<int> maxTs;
+  final Value<int> rowid;
+  const HistoryCacheCompanion({
+    this.deviceId = const Value.absent(),
+    this.bucket = const Value.absent(),
+    this.rangeKey = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.fetchedAt = const Value.absent(),
+    this.maxTs = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  HistoryCacheCompanion.insert({
+    required String deviceId,
+    required String bucket,
+    required String rangeKey,
+    required String payload,
+    required int fetchedAt,
+    required int maxTs,
+    this.rowid = const Value.absent(),
+  })  : deviceId = Value(deviceId),
+        bucket = Value(bucket),
+        rangeKey = Value(rangeKey),
+        payload = Value(payload),
+        fetchedAt = Value(fetchedAt),
+        maxTs = Value(maxTs);
+  static Insertable<HistoryCacheData> custom({
+    Expression<String>? deviceId,
+    Expression<String>? bucket,
+    Expression<String>? rangeKey,
+    Expression<String>? payload,
+    Expression<int>? fetchedAt,
+    Expression<int>? maxTs,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (deviceId != null) 'device_id': deviceId,
+      if (bucket != null) 'bucket': bucket,
+      if (rangeKey != null) 'range_key': rangeKey,
+      if (payload != null) 'payload': payload,
+      if (fetchedAt != null) 'fetched_at': fetchedAt,
+      if (maxTs != null) 'max_ts': maxTs,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  HistoryCacheCompanion copyWith(
+      {Value<String>? deviceId,
+      Value<String>? bucket,
+      Value<String>? rangeKey,
+      Value<String>? payload,
+      Value<int>? fetchedAt,
+      Value<int>? maxTs,
+      Value<int>? rowid}) {
+    return HistoryCacheCompanion(
+      deviceId: deviceId ?? this.deviceId,
+      bucket: bucket ?? this.bucket,
+      rangeKey: rangeKey ?? this.rangeKey,
+      payload: payload ?? this.payload,
+      fetchedAt: fetchedAt ?? this.fetchedAt,
+      maxTs: maxTs ?? this.maxTs,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (deviceId.present) {
+      map['device_id'] = Variable<String>(deviceId.value);
+    }
+    if (bucket.present) {
+      map['bucket'] = Variable<String>(bucket.value);
+    }
+    if (rangeKey.present) {
+      map['range_key'] = Variable<String>(rangeKey.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
+    if (fetchedAt.present) {
+      map['fetched_at'] = Variable<int>(fetchedAt.value);
+    }
+    if (maxTs.present) {
+      map['max_ts'] = Variable<int>(maxTs.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HistoryCacheCompanion(')
+          ..write('deviceId: $deviceId, ')
+          ..write('bucket: $bucket, ')
+          ..write('rangeKey: $rangeKey, ')
+          ..write('payload: $payload, ')
+          ..write('fetchedAt: $fetchedAt, ')
+          ..write('maxTs: $maxTs, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $OutboxTable extends Outbox with TableInfo<$OutboxTable, OutboxData> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -1702,17 +2050,26 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $DevicesTable devices = $DevicesTable(this);
   late final $LatestStatesTable latestStates = $LatestStatesTable(this);
   late final $TelemetryCacheTable telemetryCache = $TelemetryCacheTable(this);
+  late final $HistoryCacheTable historyCache = $HistoryCacheTable(this);
   late final $OutboxTable outbox = $OutboxTable(this);
   late final $UserSessionTable userSession = $UserSessionTable(this);
   late final DeviceDao deviceDao = DeviceDao(this as AppDatabase);
   late final TelemetryDao telemetryDao = TelemetryDao(this as AppDatabase);
   late final OutboxDao outboxDao = OutboxDao(this as AppDatabase);
+  late final HistoryCacheDao historyCacheDao =
+      HistoryCacheDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities =>
-      [devices, latestStates, telemetryCache, outbox, userSession];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+        devices,
+        latestStates,
+        telemetryCache,
+        historyCache,
+        outbox,
+        userSession
+      ];
 }
 
 typedef $$DevicesTableCreateCompanionBuilder = DevicesCompanion Function({
@@ -2333,6 +2690,194 @@ typedef $$TelemetryCacheTableProcessedTableManager = ProcessedTableManager<
     ),
     TelemetryCacheData,
     PrefetchHooks Function()>;
+typedef $$HistoryCacheTableCreateCompanionBuilder = HistoryCacheCompanion
+    Function({
+  required String deviceId,
+  required String bucket,
+  required String rangeKey,
+  required String payload,
+  required int fetchedAt,
+  required int maxTs,
+  Value<int> rowid,
+});
+typedef $$HistoryCacheTableUpdateCompanionBuilder = HistoryCacheCompanion
+    Function({
+  Value<String> deviceId,
+  Value<String> bucket,
+  Value<String> rangeKey,
+  Value<String> payload,
+  Value<int> fetchedAt,
+  Value<int> maxTs,
+  Value<int> rowid,
+});
+
+class $$HistoryCacheTableFilterComposer
+    extends Composer<_$AppDatabase, $HistoryCacheTable> {
+  $$HistoryCacheTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get deviceId => $composableBuilder(
+      column: $table.deviceId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get bucket => $composableBuilder(
+      column: $table.bucket, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get rangeKey => $composableBuilder(
+      column: $table.rangeKey, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get payload => $composableBuilder(
+      column: $table.payload, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get fetchedAt => $composableBuilder(
+      column: $table.fetchedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get maxTs => $composableBuilder(
+      column: $table.maxTs, builder: (column) => ColumnFilters(column));
+}
+
+class $$HistoryCacheTableOrderingComposer
+    extends Composer<_$AppDatabase, $HistoryCacheTable> {
+  $$HistoryCacheTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get deviceId => $composableBuilder(
+      column: $table.deviceId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get bucket => $composableBuilder(
+      column: $table.bucket, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get rangeKey => $composableBuilder(
+      column: $table.rangeKey, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+      column: $table.payload, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get fetchedAt => $composableBuilder(
+      column: $table.fetchedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get maxTs => $composableBuilder(
+      column: $table.maxTs, builder: (column) => ColumnOrderings(column));
+}
+
+class $$HistoryCacheTableAnnotationComposer
+    extends Composer<_$AppDatabase, $HistoryCacheTable> {
+  $$HistoryCacheTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get deviceId =>
+      $composableBuilder(column: $table.deviceId, builder: (column) => column);
+
+  GeneratedColumn<String> get bucket =>
+      $composableBuilder(column: $table.bucket, builder: (column) => column);
+
+  GeneratedColumn<String> get rangeKey =>
+      $composableBuilder(column: $table.rangeKey, builder: (column) => column);
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumn<int> get fetchedAt =>
+      $composableBuilder(column: $table.fetchedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get maxTs =>
+      $composableBuilder(column: $table.maxTs, builder: (column) => column);
+}
+
+class $$HistoryCacheTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $HistoryCacheTable,
+    HistoryCacheData,
+    $$HistoryCacheTableFilterComposer,
+    $$HistoryCacheTableOrderingComposer,
+    $$HistoryCacheTableAnnotationComposer,
+    $$HistoryCacheTableCreateCompanionBuilder,
+    $$HistoryCacheTableUpdateCompanionBuilder,
+    (
+      HistoryCacheData,
+      BaseReferences<_$AppDatabase, $HistoryCacheTable, HistoryCacheData>
+    ),
+    HistoryCacheData,
+    PrefetchHooks Function()> {
+  $$HistoryCacheTableTableManager(_$AppDatabase db, $HistoryCacheTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$HistoryCacheTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$HistoryCacheTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$HistoryCacheTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> deviceId = const Value.absent(),
+            Value<String> bucket = const Value.absent(),
+            Value<String> rangeKey = const Value.absent(),
+            Value<String> payload = const Value.absent(),
+            Value<int> fetchedAt = const Value.absent(),
+            Value<int> maxTs = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              HistoryCacheCompanion(
+            deviceId: deviceId,
+            bucket: bucket,
+            rangeKey: rangeKey,
+            payload: payload,
+            fetchedAt: fetchedAt,
+            maxTs: maxTs,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String deviceId,
+            required String bucket,
+            required String rangeKey,
+            required String payload,
+            required int fetchedAt,
+            required int maxTs,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              HistoryCacheCompanion.insert(
+            deviceId: deviceId,
+            bucket: bucket,
+            rangeKey: rangeKey,
+            payload: payload,
+            fetchedAt: fetchedAt,
+            maxTs: maxTs,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$HistoryCacheTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $HistoryCacheTable,
+    HistoryCacheData,
+    $$HistoryCacheTableFilterComposer,
+    $$HistoryCacheTableOrderingComposer,
+    $$HistoryCacheTableAnnotationComposer,
+    $$HistoryCacheTableCreateCompanionBuilder,
+    $$HistoryCacheTableUpdateCompanionBuilder,
+    (
+      HistoryCacheData,
+      BaseReferences<_$AppDatabase, $HistoryCacheTable, HistoryCacheData>
+    ),
+    HistoryCacheData,
+    PrefetchHooks Function()>;
 typedef $$OutboxTableCreateCompanionBuilder = OutboxCompanion Function({
   Value<int> id,
   required String action,
@@ -2630,6 +3175,8 @@ class $AppDatabaseManager {
       $$LatestStatesTableTableManager(_db, _db.latestStates);
   $$TelemetryCacheTableTableManager get telemetryCache =>
       $$TelemetryCacheTableTableManager(_db, _db.telemetryCache);
+  $$HistoryCacheTableTableManager get historyCache =>
+      $$HistoryCacheTableTableManager(_db, _db.historyCache);
   $$OutboxTableTableManager get outbox =>
       $$OutboxTableTableManager(_db, _db.outbox);
   $$UserSessionTableTableManager get userSession =>

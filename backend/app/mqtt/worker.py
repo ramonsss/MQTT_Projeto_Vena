@@ -17,6 +17,7 @@ class MqttWorker:
     TOPICS = [
         ("vena/+/telemetry", 1),
         ("vena/+/status", 1),
+        ("vena/+/meta", 1),
     ]
 
     def __init__(self, queue: asyncio.Queue[tuple[str, bytes]], loop: asyncio.AbstractEventLoop) -> None:

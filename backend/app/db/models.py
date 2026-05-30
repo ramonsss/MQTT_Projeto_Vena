@@ -95,3 +95,23 @@ class TelemetryRaw(Base):
     pid_out: Mapped[float | None] = mapped_column(Float, nullable=True)
     uptime_ms: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     seq: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+
+
+class DeviceMeta(Base):
+    """Last `meta` payload published by a device (Phase 5).
+
+    UPSERTed on every meta message — we keep only the most recent boot info.
+    Historical boot events live in the broker logs / future device_events table.
+    """
+
+    __tablename__ = "device_meta"
+
+    device_id: Mapped[str] = mapped_column(
+        String(32),
+        ForeignKey("devices.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

@@ -6,7 +6,7 @@ part of 'device_actions_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$deviceActionsHash() => r'b1ce36c4fd40670bfd3178472db991c34858165d';
+String _$deviceActionsHash() => r'762b89398cb762d6824b977f87a3e6b6a75c695e';
 
 /// Exposes write operations for the devices feature.
 ///

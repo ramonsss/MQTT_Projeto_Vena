@@ -6,7 +6,7 @@ part of 'history_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$historyHash() => r'a35b7a9697d804de751f7ffbac809fe169dcea0f';
+String _$historyHash() => r'2cb043a0e0920b72e13242841c8ce637eb1cdbc7';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -31,8 +31,13 @@ class _SystemHash {
 
 /// Fetches telemetry history for [deviceId] over [range].
 ///
-/// Results are cached for 5 minutes via [keepAlive] link. Callers invalidate
-/// by calling `ref.invalidate(historyProvider(deviceId, range))` if needed.
+/// Strategy:
+/// 1. Read `history_cache` row for `(deviceId, bucket='auto'-resolved, range)`.
+/// 2. If fresh (`fetchedAt` within [kHistoryCacheTtl]) → return cached samples.
+/// 3. Otherwise fetch from the API, persist the new envelope, return samples.
+///
+/// Riverpod also keeps the in-memory result alive for 5 min via [keepAlive]
+/// so widgets remounting in the same session avoid even the Drift round-trip.
 ///
 /// Copied from [history].
 @ProviderFor(history)
@@ -40,23 +45,38 @@ const historyProvider = HistoryFamily();
 
 /// Fetches telemetry history for [deviceId] over [range].
 ///
-/// Results are cached for 5 minutes via [keepAlive] link. Callers invalidate
-/// by calling `ref.invalidate(historyProvider(deviceId, range))` if needed.
+/// Strategy:
+/// 1. Read `history_cache` row for `(deviceId, bucket='auto'-resolved, range)`.
+/// 2. If fresh (`fetchedAt` within [kHistoryCacheTtl]) → return cached samples.
+/// 3. Otherwise fetch from the API, persist the new envelope, return samples.
+///
+/// Riverpod also keeps the in-memory result alive for 5 min via [keepAlive]
+/// so widgets remounting in the same session avoid even the Drift round-trip.
 ///
 /// Copied from [history].
 class HistoryFamily extends Family<AsyncValue<List<TelemetryPoint>>> {
   /// Fetches telemetry history for [deviceId] over [range].
   ///
-  /// Results are cached for 5 minutes via [keepAlive] link. Callers invalidate
-  /// by calling `ref.invalidate(historyProvider(deviceId, range))` if needed.
+  /// Strategy:
+  /// 1. Read `history_cache` row for `(deviceId, bucket='auto'-resolved, range)`.
+  /// 2. If fresh (`fetchedAt` within [kHistoryCacheTtl]) → return cached samples.
+  /// 3. Otherwise fetch from the API, persist the new envelope, return samples.
+  ///
+  /// Riverpod also keeps the in-memory result alive for 5 min via [keepAlive]
+  /// so widgets remounting in the same session avoid even the Drift round-trip.
   ///
   /// Copied from [history].
   const HistoryFamily();
 
   /// Fetches telemetry history for [deviceId] over [range].
   ///
-  /// Results are cached for 5 minutes via [keepAlive] link. Callers invalidate
-  /// by calling `ref.invalidate(historyProvider(deviceId, range))` if needed.
+  /// Strategy:
+  /// 1. Read `history_cache` row for `(deviceId, bucket='auto'-resolved, range)`.
+  /// 2. If fresh (`fetchedAt` within [kHistoryCacheTtl]) → return cached samples.
+  /// 3. Otherwise fetch from the API, persist the new envelope, return samples.
+  ///
+  /// Riverpod also keeps the in-memory result alive for 5 min via [keepAlive]
+  /// so widgets remounting in the same session avoid even the Drift round-trip.
   ///
   /// Copied from [history].
   HistoryProvider call(
@@ -96,15 +116,25 @@ class HistoryFamily extends Family<AsyncValue<List<TelemetryPoint>>> {
 
 /// Fetches telemetry history for [deviceId] over [range].
 ///
-/// Results are cached for 5 minutes via [keepAlive] link. Callers invalidate
-/// by calling `ref.invalidate(historyProvider(deviceId, range))` if needed.
+/// Strategy:
+/// 1. Read `history_cache` row for `(deviceId, bucket='auto'-resolved, range)`.
+/// 2. If fresh (`fetchedAt` within [kHistoryCacheTtl]) → return cached samples.
+/// 3. Otherwise fetch from the API, persist the new envelope, return samples.
+///
+/// Riverpod also keeps the in-memory result alive for 5 min via [keepAlive]
+/// so widgets remounting in the same session avoid even the Drift round-trip.
 ///
 /// Copied from [history].
 class HistoryProvider extends AutoDisposeFutureProvider<List<TelemetryPoint>> {
   /// Fetches telemetry history for [deviceId] over [range].
   ///
-  /// Results are cached for 5 minutes via [keepAlive] link. Callers invalidate
-  /// by calling `ref.invalidate(historyProvider(deviceId, range))` if needed.
+  /// Strategy:
+  /// 1. Read `history_cache` row for `(deviceId, bucket='auto'-resolved, range)`.
+  /// 2. If fresh (`fetchedAt` within [kHistoryCacheTtl]) → return cached samples.
+  /// 3. Otherwise fetch from the API, persist the new envelope, return samples.
+  ///
+  /// Riverpod also keeps the in-memory result alive for 5 min via [keepAlive]
+  /// so widgets remounting in the same session avoid even the Drift round-trip.
   ///
   /// Copied from [history].
   HistoryProvider(
