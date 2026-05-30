@@ -43,7 +43,9 @@ services:
   mosquitto:
     image: iegomez/mosquitto-go-auth:latest
     restart: unless-stopped
-    user: "0"  # root — necessário para ler certs do Caddy (modo 600, dono root)
+    user: "0"  # root — necessário para chmod nos certs do Caddy
+    # Abre permissões nos certs antes de iniciar; sem isso OpenSSL recusa leitura
+    entrypoint: ["/bin/sh", "-c", "chmod -R 644 /caddy_certs/caddy/certificates/ && find /caddy_certs/caddy/certificates/ -type d -exec chmod 755 {} \\; && exec mosquitto -c /etc/mosquitto/mosquitto.conf"]
     ports:
       - "127.0.0.1:1883:1883"   # interno — FastAPI worker acessa via bridge
       - "8883:8883"              # externo — MQTT/TLS para dispositivos e app
