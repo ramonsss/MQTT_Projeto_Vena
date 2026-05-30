@@ -50,7 +50,10 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=r"http://localhost(:\d+)?",
-    allow_origins=["https://app.vena.farm"],
+    allow_origins=[
+        "https://app.vena.farm",
+        "https://vena-demo.duckdns.org",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

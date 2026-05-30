@@ -10,8 +10,12 @@ from app.db.models import Base
 
 config = context.config
 
-# Override sqlalchemy.url from settings
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# Use the direct (non-pooled) connection when available so that DDL statements
+# (CREATE INDEX, ALTER TABLE …) run in session mode rather than transaction-
+# pooler mode.  On Supabase the transaction pooler (port 6543) does not support
+# session-level commands; the direct connection (port 5432) must be used.
+_migration_url = settings.database_url_direct or settings.database_url
+config.set_main_option("sqlalchemy.url", _migration_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

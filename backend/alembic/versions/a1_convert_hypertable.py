@@ -11,10 +11,13 @@ dropped by the TimescaleDB background worker.
 NOT reversible — converting back from hypertable to plain table is unsupported
 in production; it would require re-creating the table from scratch.
 """
+import logging
 from typing import Sequence, Union
 
 from alembic import op
+from sqlalchemy import text
 
+log = logging.getLogger("alembic.runtime.migration")
 
 revision: str = "a1b2c3d4e5f1"
 down_revision: Union[str, None] = "5421ecc75138"
@@ -22,7 +25,26 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _timescaledb_available() -> bool:
+    """Return True only if timescaledb is available on this server."""
+    conn = op.get_bind()
+    row = conn.execute(
+        text(
+            "SELECT COUNT(*) FROM pg_available_extensions "
+            "WHERE name = 'timescaledb'"
+        )
+    ).scalar()
+    return bool(row)
+
+
 def upgrade() -> None:
+    if not _timescaledb_available():
+        log.warning(
+            "[a1] TimescaleDB not available on this server — "
+            "skipping hypertable conversion (Supabase/plain Postgres mode)."
+        )
+        return
+
     # Ensure TimescaleDB extension is active (it ships pre-installed in the
     # timescale/timescaledb Docker image; this is a no-op if already enabled).
     op.execute("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;")

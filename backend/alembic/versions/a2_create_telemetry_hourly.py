@@ -12,10 +12,13 @@ Retention policy: drop hourly data older than 2 years.
 
 Downgrade: drops the aggregate, its refresh policy and its retention policy.
 """
+import logging
 from typing import Sequence, Union
 
 from alembic import op
+from sqlalchemy import text
 
+log = logging.getLogger("alembic.runtime.migration")
 
 revision: str = "a2b3c4d5e6f2"
 down_revision: Union[str, None] = "a1b2c3d4e5f1"
@@ -23,7 +26,23 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _timescaledb_active() -> bool:
+    """Return True only if timescaledb extension is already enabled."""
+    conn = op.get_bind()
+    row = conn.execute(
+        text("SELECT COUNT(*) FROM pg_extension WHERE extname = 'timescaledb'")
+    ).scalar()
+    return bool(row)
+
+
 def upgrade() -> None:
+    if not _timescaledb_active():
+        log.warning(
+            "[a2] TimescaleDB not active — "
+            "skipping telemetry_hourly continuous aggregate."
+        )
+        return
+
     # ------------------------------------------------------------------
     # 1. Continuous aggregate view
     # ------------------------------------------------------------------

@@ -11,6 +11,9 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = "postgresql+asyncpg://vena:vena_dev_local@localhost:5432/vena"
+    # Direct (non-pooled) connection for Alembic DDL migrations.
+    # Falls back to database_url when not set (local / TimescaleDB deployments).
+    database_url_direct: str = ""
 
     # MQTT
     mqtt_host: str = "localhost"

@@ -12,10 +12,13 @@ No retention policy — daily summaries are kept indefinitely.
 
 Downgrade: drops the aggregate and its refresh policy.
 """
+import logging
 from typing import Sequence, Union
 
 from alembic import op
+from sqlalchemy import text
 
+log = logging.getLogger("alembic.runtime.migration")
 
 revision: str = "a3c4d5e6f7a3"
 down_revision: Union[str, None] = "a2b3c4d5e6f2"
@@ -23,7 +26,23 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _timescaledb_active() -> bool:
+    """Return True only if timescaledb extension is already enabled."""
+    conn = op.get_bind()
+    row = conn.execute(
+        text("SELECT COUNT(*) FROM pg_extension WHERE extname = 'timescaledb'")
+    ).scalar()
+    return bool(row)
+
+
 def upgrade() -> None:
+    if not _timescaledb_active():
+        log.warning(
+            "[a3] TimescaleDB not active — "
+            "skipping telemetry_daily continuous aggregate."
+        )
+        return
+
     # ------------------------------------------------------------------
     # 1. Continuous aggregate view
     # ------------------------------------------------------------------
