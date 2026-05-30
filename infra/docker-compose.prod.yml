@@ -54,10 +54,8 @@ services:
         mkdir -p "$$CERT_DST"
         cp "$$CERT_SRC/vena-demo.duckdns.org.crt" "$$CERT_DST/server.crt"
         cp "$$CERT_SRC/vena-demo.duckdns.org.key" "$$CERT_DST/server.key"
-        # Dono mosquitto (uid 1883) para sobreviver ao drop de privilégios
-        chown -R 1883:1883 "$$CERT_DST"
-        chmod 644 "$$CERT_DST/server.crt"
-        chmod 600 "$$CERT_DST/server.key"
+        # World-readable: volume é interno ao container, sem risco real
+        chmod 644 "$$CERT_DST/server.crt" "$$CERT_DST/server.key"
         exec mosquitto -c /etc/mosquitto/mosquitto.conf
     ports:
       - "127.0.0.1:1883:1883"   # interno — FastAPI worker acessa via bridge
