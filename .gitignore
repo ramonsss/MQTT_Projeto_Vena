@@ -19,5 +19,14 @@ firmware/.piolibdeps/
 firmware/include/secrets.h
 firmware/platformio.local.ini
 
+# Variáveis de ambiente — NUNCA commitar o .env real
+.env
+.env.prod
+**/.env
+**/.env.prod
+!**/.env.example
+
 # Broker MQTT local para testes de integração
 amqtt.yaml
+
+google-services.json

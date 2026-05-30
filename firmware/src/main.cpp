@@ -1,6 +1,9 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <ArduinoJson.h>
+#include <time.h>
+#include <esp_mac.h>
+#include <WiFi.h>
 
 #include "config.h"
 #include "SensorManager.h"
@@ -8,6 +11,9 @@
 #include "DisplayManager.h"
 #include "OfflineBuffer.h"
 #include "MqttPublisher.h"
+#include "NvsJwt.h"
+#include "BleManager.h"
+#include "WifiProvisioner.h"
 
 namespace {
     SensorManager sensors(PIN_DHT_AMBIENT, PIN_DHT_DISSIPATOR);
@@ -18,10 +24,16 @@ namespace {
                               PID_SLEW_PER_SEC);
     DisplayManager display(LCD_I2C_ADDR, 20, 4);
     OfflineBuffer buffer(OFFLINE_BUFFER_SIZE);
-    MqttPublisher mqtt(WIFI_SSID, WIFI_PASS,
-                       MQTT_HOST, MQTT_PORT,
-                       MQTT_CLIENT_ID,
-                       MQTT_TOPIC_TELEMETRY, MQTT_TOPIC_CMD);
+    MqttPublisher mqtt(WIFI_SSID, WIFI_PASS, MQTT_HOST, MQTT_PORT);
+    BleManager ble;
+    WifiProvisioner provisioner;
+
+    char deviceId[20];  // "vena-xxxxxxxxxxxx\0"
+    char bleName[12];   // "Vena-XXXX\0"
+    char pairingCode[10]; // "XXXX-XXXX\0"
+    bool ntpReady = false;
+    bool wifiProvisioned = false;
+    uint32_t seqCounter = 0;
 
     float lastAmbT = NAN, lastAmbH = NAN;
     float lastDissT = NAN, lastDissH = NAN;
@@ -29,10 +41,35 @@ namespace {
     unsigned long lastPidMs = 0;
     unsigned long lastDisplayMs = 0;
     unsigned long lastTelemetryMs = 0;
+    unsigned long lastBleNotifyMs = 0;
+}
+
+static void buildDeviceId() {
+    uint8_t mac[6];
+    esp_efuse_mac_get_default(mac);
+    snprintf(deviceId, sizeof(deviceId), "vena-%02x%02x%02x%02x%02x%02x",
+             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    // BLE advertised name: "Vena-" + last 4 hex of MAC
+    snprintf(bleName, sizeof(bleName), "%s%02X%02X", BLE_DEVICE_PREFIX, mac[4], mac[5]);
+    // Pairing code: deterministic from MAC (first 8 hex chars, formatted XXXX-XXXX)
+    snprintf(pairingCode, sizeof(pairingCode), "%02X%02X-%02X%02X",
+             mac[0] ^ 0x5A, mac[1] ^ 0xA5, mac[2] ^ 0x3C, mac[3] ^ 0xC3);
+}
+
+static bool waitForNtp() {
+    configTime(0, 0, NTP_SERVER);
+    unsigned long start = millis();
+    while (time(nullptr) < 1000000000UL) {  // before ~2001 = not synced
+        if (millis() - start > NTP_TIMEOUT_MS) return false;
+        delay(100);
+    }
+    return true;
 }
 
 static String buildTelemetryJson() {
     JsonDocument doc;
+    doc["ts"] = (int64_t)time(nullptr) * 1000LL;
+    doc["seq"] = seqCounter++;
     doc["ambient_t"] = lastAmbT;
     doc["ambient_h"] = lastAmbH;
     doc["diss_t"] = lastDissT;
@@ -54,18 +91,136 @@ static void handleCommand(const JsonDocument& doc) {
     }
 }
 
+static String buildBleTelemetryJson() {
+    JsonDocument doc;
+    doc["ts"] = (int64_t)time(nullptr) * 1000LL;
+    doc["at"] = lastAmbT;
+    doc["ah"] = lastAmbH;
+    doc["dt"] = lastDissT;
+    doc["dh"] = lastDissH;
+    doc["sp"] = peltier.currentSetpoint();
+    doc["po"] = peltier.lastOutput();
+    String out;
+    serializeJson(doc, out);
+    return out;
+}
+
+static void onProvisionReceived(const WifiCredentials& creds) {
+    Serial.println("[PROV] saving credentials from BLE...");
+    provisioner.saveCredentials(creds.ssid, creds.psk, creds.jwt);
+
+    // Store JWT in NvsJwt for MqttPublisher (only if provided)
+    if (creds.jwt.length() > 0) {
+        nvs_store_jwt(creds.jwt);
+    }
+
+    // Attempt Wi-Fi connection with new credentials
+    WiFi.disconnect(true);
+    delay(100);
+    WiFi.begin(creds.ssid.c_str(), creds.psk.c_str());
+    Serial.printf("[PROV] connecting to WiFi: %s\n", creds.ssid.c_str());
+
+    unsigned long start = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - start < 15000) {
+        delay(200);
+    }
+
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.printf("[PROV] WiFi connected, IP=%s\n", WiFi.localIP().toString().c_str());
+        ble.updateWifiStatus(true, creds.ssid.c_str(),
+                             WiFi.localIP().toString().c_str(), WiFi.RSSI());
+        wifiProvisioned = true;
+
+        // Start MQTT with new JWT (if available)
+        if (creds.jwt.length() > 0) {
+            mqtt.setJwt(creds.jwt);
+        }
+        mqtt.begin(deviceId);
+
+        // Sync NTP now that we have network
+        if (!ntpReady) {
+            ntpReady = waitForNtp();
+            if (ntpReady) Serial.println("[NTP] sincronizado apos provisioning");
+        }
+    } else {
+        Serial.println("[PROV] WiFi connection failed");
+        ble.updateWifiStatus(false);
+    }
+}
+
 void setup() {
     Serial.begin(115200);
     delay(100);
+
+    buildDeviceId();
+    Serial.print("[BOOT] device_id=");
+    Serial.println(deviceId);
+    Serial.print("[BOOT] ble_name=");
+    Serial.println(bleName);
 
     Wire.begin(PIN_LCD_SDA, PIN_LCD_SCL);
     sensors.begin();
     peltier.begin();
     display.begin();
-    mqtt.begin();
-    mqtt.onCommand(handleCommand);
 
-    Serial.println("[BOOT] cocoa-box pronto");
+    // Initialize Wi-Fi provisioner (check NVS for stored credentials)
+    provisioner.begin();
+
+    // Initialize BLE — always active for local monitoring + provisioning
+    ble.setProvisionCallback(onProvisionReceived);
+    ble.init(bleName, deviceId, pairingCode, FW_VERSION);
+
+    // Determine Wi-Fi mode: use provisioned creds or compile-time defaults
+    if (provisioner.hasCredentials()) {
+        StoredCredentials creds = provisioner.loadCredentials();
+        Serial.printf("[BOOT] using provisioned WiFi: %s\n", creds.ssid.c_str());
+        WiFi.begin(creds.ssid.c_str(), creds.psk.c_str());
+        mqtt.setJwt(creds.jwt);
+        mqtt.begin(deviceId);
+        mqtt.onCommand(handleCommand);
+        wifiProvisioned = true;
+    } else {
+        // Fallback to compile-time credentials (dev/testing)
+        Serial.println("[BOOT] no provisioned WiFi — using compile-time defaults");
+        mqtt.begin(deviceId);
+        mqtt.onCommand(handleCommand);
+
+#if MQTT_USE_AUTH
+        {
+            String jwt = nvs_load_jwt();
+            if (jwt.length() > 0) {
+                mqtt.setJwt(jwt);
+                Serial.println("[AUTH] device JWT carregado do NVS");
+            } else {
+                Serial.println("[AUTH] MQTT_USE_AUTH=1 mas nenhum JWT no NVS");
+            }
+        }
+#endif
+    }
+
+    // Wait for Wi-Fi + NTP
+    Serial.println("[NTP] aguardando sincronizacao...");
+    unsigned long wifiWait = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - wifiWait < 15000) {
+        delay(200);
+    }
+
+    if (WiFi.status() == WL_CONNECTED) {
+        ntpReady = waitForNtp();
+        if (ntpReady) {
+            Serial.println("[NTP] sincronizado");
+        } else {
+            Serial.println("[NTP] timeout - usando uptime como fallback");
+        }
+        // Update BLE wifi_status characteristic
+        ble.updateWifiStatus(true, WiFi.SSID().c_str(),
+                             WiFi.localIP().toString().c_str(), WiFi.RSSI());
+    } else {
+        Serial.println("[WIFI] nao conectou - modo BLE-only ativo");
+        ble.updateWifiStatus(false);
+    }
+
+    Serial.printf("[BOOT] Vena pronta (heap=%u bytes)\n", ESP.getFreeHeap());
 }
 
 void loop() {
@@ -97,6 +252,15 @@ void loop() {
         }
         display.showStatus(lastAmbT, lastAmbH, lastDissT,
                            peltier.currentSetpoint(), mqtt.isConnected());
+    }
+
+    // BLE telemetry notify (every 2s, independent of MQTT 5s)
+    if (now - lastBleNotifyMs >= BLE_NOTIFY_INTERVAL_MS) {
+        lastBleNotifyMs = now;
+        if (ble.isConnected()) {
+            String blePayload = buildBleTelemetryJson();
+            ble.notifyTelemetry(blePayload.c_str());
+        }
     }
 
     if (now - lastTelemetryMs >= TELEMETRY_PERIOD_MS) {

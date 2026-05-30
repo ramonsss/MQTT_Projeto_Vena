@@ -1,0 +1,33 @@
+# =============================================================================
+# Caddyfile — Vena produção
+# Substitua "vena-demo.duckdns.org" pelo seu subdomínio DuckDNS real.
+# Caddy obtém e renova o certificado Let's Encrypt automaticamente.
+# =============================================================================
+
+vena-demo.duckdns.org {
+    # Proxy reverso para o FastAPI
+    reverse_proxy fastapi:8000
+
+    # Cabeçalhos de segurança
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options    "nosniff"
+        X-Frame-Options           "DENY"
+        -Server
+    }
+
+    # Logs estruturados
+    log {
+        output file /data/caddy/logs/access.log {
+            roll_size     10MB
+            roll_keep     5
+        }
+        format json
+    }
+}
+
+# Redireciona HTTP → HTTPS automaticamente (Caddy faz isso por padrão,
+# mas explicitando para clareza)
+http://vena-demo.duckdns.org {
+    redir https://{host}{uri} permanent
+}

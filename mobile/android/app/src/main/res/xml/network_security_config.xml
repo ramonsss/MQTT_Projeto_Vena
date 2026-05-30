@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  RELEASE / DEFAULT network security config.
+  Cleartext HTTP is NOT permitted. All traffic must use HTTPS/TLS.
+  This file is overridden for debug builds by
+  android/app/src/debug/res/xml/network_security_config.xml
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system"/>
+        </trust-anchors>
+    </base-config>
+</network-security-config>

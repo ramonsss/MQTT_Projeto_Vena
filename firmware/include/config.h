@@ -82,17 +82,18 @@
 #ifndef MQTT_PORT
 #define MQTT_PORT 1883
 #endif
-#ifndef MQTT_CLIENT_ID
-#define MQTT_CLIENT_ID "cocoa-box-01"
-#endif
-#ifndef MQTT_TOPIC_TELEMETRY
-#define MQTT_TOPIC_TELEMETRY "cocoa/box01/telemetry"
-#endif
-#ifndef MQTT_TOPIC_CMD
-#define MQTT_TOPIC_CMD "cocoa/box01/cmd"
-#endif
 #ifndef MQTT_BUFFER_SIZE
 #define MQTT_BUFFER_SIZE 512
+#endif
+
+#ifndef NTP_SERVER
+#define NTP_SERVER "pool.ntp.org"
+#endif
+#ifndef NTP_TIMEOUT_MS
+#define NTP_TIMEOUT_MS 10000
+#endif
+#ifndef FW_VERSION
+#define FW_VERSION "1.1.0"
 #endif
 
 #ifndef OFFLINE_BUFFER_SIZE
@@ -104,4 +105,40 @@
 #endif
 #ifndef DISPLAY_REFRESH_MS
 #define DISPLAY_REFRESH_MS 1000
+#endif
+
+// MQTT authentication via device JWT stored in NVS.
+// Set to 1 in platformio.local.ini once the device has been provisioned:
+//   build_flags = ${common.build_flags} -DMQTT_USE_AUTH=1
+#ifndef MQTT_USE_AUTH
+#define MQTT_USE_AUTH 0
+#endif
+// NVS key used to persist the device JWT across reboots.
+#ifndef MQTT_NVS_JWT_KEY
+#define MQTT_NVS_JWT_KEY "device_jwt"
+#endif
+
+// ─── BLE Configuration ─────────────────────────────────────────────────────
+#ifndef BLE_DEVICE_PREFIX
+#define BLE_DEVICE_PREFIX "Vena-"
+#endif
+#ifndef BLE_NOTIFY_INTERVAL_MS
+#define BLE_NOTIFY_INTERVAL_MS 2000
+#endif
+#ifndef BLE_MTU
+#define BLE_MTU 247
+#endif
+
+// ─── Wi-Fi Provisioning (NVS keys) ─────────────────────────────────────────
+#ifndef PROV_NVS_NAMESPACE
+#define PROV_NVS_NAMESPACE "vena_cfg"
+#endif
+#ifndef NVS_KEY_SSID
+#define NVS_KEY_SSID "wifi_ssid"
+#endif
+#ifndef NVS_KEY_PSK
+#define NVS_KEY_PSK "wifi_psk"
+#endif
+#ifndef NVS_KEY_JWT
+#define NVS_KEY_JWT "device_jwt"
 #endif
