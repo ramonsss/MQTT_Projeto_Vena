@@ -54,8 +54,8 @@ services:
       - ./mosquitto/passwd:/etc/mosquitto/passwd:ro
       - mosquitto_data:/mosquitto/data
       - mosquitto_log:/mosquitto/log
-      # Certificados gerados pelo Caddy (Let's Encrypt)
-      - caddy_data:/caddy_certs:ro
+      # Certificados gerados pelo Caddy — sem :ro para o chmod do entrypoint funcionar
+      - caddy_data:/caddy_certs
     networks:
       - vena_net
     depends_on:
