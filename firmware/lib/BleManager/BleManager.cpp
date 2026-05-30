@@ -89,7 +89,7 @@ int BleManager::clientCount() const {
 }
 
 void BleManager::notifyTelemetry(const char* jsonPayload) {
-    if (!_clientConnected) return;
+    if (_clientCount <= 0) return;
     _telemetryChar->setValue(jsonPayload);
     _telemetryChar->notify();
 }
@@ -106,7 +106,7 @@ void BleManager::updateWifiStatus(bool connected, const char* ssid,
     String out;
     serializeJson(doc, out);
     _wifiStatusChar->setValue(out.c_str());
-    if (_clientConnected) {
+    if (_clientCount > 0) {
         _wifiStatusChar->notify();
     }
 }

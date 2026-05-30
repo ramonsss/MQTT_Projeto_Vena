@@ -3,6 +3,8 @@
 #include <ArduinoJson.h>
 #include <time.h>
 #include <esp_mac.h>
+#include <esp_system.h>
+#include <Preferences.h>
 #include <WiFi.h>
 
 #include "config.h"
@@ -42,7 +44,57 @@ namespace {
     unsigned long lastDisplayMs = 0;
     unsigned long lastTelemetryMs = 0;
     unsigned long lastBleNotifyMs = 0;
+
+    // Phase 5 — meta payload tracking
+    uint32_t bootCount = 0;
+    uint32_t freeHeapBoot = 0;
+    uint32_t freeHeapMinRuntime = UINT32_MAX;
+    esp_reset_reason_t lastResetReason = ESP_RST_UNKNOWN;
+    bool metaPublished = false;
 }
+
+namespace {
+    const char* resetReasonToStr(esp_reset_reason_t r) {
+        switch (r) {
+            case ESP_RST_POWERON:   return "ESP_RST_POWERON";
+            case ESP_RST_EXT:       return "ESP_RST_EXT";
+            case ESP_RST_SW:        return "ESP_RST_SW";
+            case ESP_RST_PANIC:     return "ESP_RST_PANIC";
+            case ESP_RST_INT_WDT:   return "ESP_RST_INT_WDT";
+            case ESP_RST_TASK_WDT:  return "ESP_RST_TASK_WDT";
+            case ESP_RST_WDT:       return "ESP_RST_WDT";
+            case ESP_RST_DEEPSLEEP: return "ESP_RST_DEEPSLEEP";
+            case ESP_RST_BROWNOUT:  return "ESP_RST_BROWNOUT";
+            case ESP_RST_SDIO:      return "ESP_RST_SDIO";
+            default:                return "ESP_RST_UNKNOWN";
+        }
+    }
+
+    uint32_t bumpBootCount() {
+        Preferences p;
+        if (!p.begin("vena_meta", /*readOnly=*/false)) return 0;
+        uint32_t v = p.getUInt("boot_count", 0) + 1;
+        p.putUInt("boot_count", v);
+        p.end();
+        return v;
+    }
+
+    String buildMetaJson() {
+        JsonDocument doc;
+        doc["fw_version"] = FW_VERSION;
+        doc["ble_max_conn"] = CONFIG_BT_NIMBLE_MAX_CONNECTIONS;
+        doc["free_heap_boot"] = freeHeapBoot;
+        doc["free_heap_min_runtime"] =
+            (freeHeapMinRuntime == UINT32_MAX) ? freeHeapBoot : freeHeapMinRuntime;
+        doc["wifi_rssi"] = WiFi.isConnected() ? WiFi.RSSI() : 0;
+        doc["ntp_synced"] = ntpReady;
+        doc["boot_count"] = bootCount;
+        doc["last_reset_reason"] = resetReasonToStr(lastResetReason);
+        String out;
+        serializeJson(doc, out);
+        return out;
+    }
+}  // namespace (Phase 5 meta helpers)
 
 static void buildDeviceId() {
     uint8_t mac[6];
@@ -152,6 +204,13 @@ void setup() {
     Serial.begin(115200);
     delay(100);
 
+    // Phase 5 — capture boot diagnostics BEFORE allocating BLE/Wi-Fi.
+    lastResetReason = esp_reset_reason();
+    freeHeapBoot = ESP.getFreeHeap();
+    bootCount = bumpBootCount();
+    Serial.printf("[META] boot_count=%u, reset=%s, heap_boot=%u\n",
+                  bootCount, resetReasonToStr(lastResetReason), freeHeapBoot);
+
     buildDeviceId();
     Serial.print("[BOOT] device_id=");
     Serial.println(deviceId);
@@ -226,6 +285,20 @@ void setup() {
 void loop() {
     const unsigned long now = millis();
     mqtt.loop();
+
+    // Phase 5 — track min free heap continuously to detect leaks.
+    uint32_t curHeap = ESP.getFreeHeap();
+    if (curHeap < freeHeapMinRuntime) freeHeapMinRuntime = curHeap;
+
+    // Publish meta once per boot, after MQTT is up. Retain=true so the broker
+    // keeps it for late subscribers and backend restarts.
+    if (!metaPublished && mqtt.isConnected()) {
+        String metaPayload = buildMetaJson();
+        if (mqtt.publishMeta(metaPayload)) {
+            metaPublished = true;
+            Serial.printf("[META] published (%u bytes)\n", metaPayload.length());
+        }
+    }
 
     if (now - lastPidMs >= PID_SAMPLE_MS) {
         lastPidMs = now;

@@ -44,19 +44,35 @@ class _HistoryChartState extends State<HistoryChart> {
     final minTs = points.first.ts.toDouble();
     final maxTs = points.last.ts.toDouble();
 
-    // Build spots for temperature.
+    // Build spots for temperature (avg/min/max).
     final tempSpots = <FlSpot>[];
+    final tempMinSpots = <FlSpot>[];
+    final tempMaxSpots = <FlSpot>[];
     for (final p in points) {
       if (p.ambientT != null) {
         tempSpots.add(FlSpot((p.ts - minTs).toDouble(), p.ambientT!));
       }
+      if (p.hasAmbientBand) {
+        tempMinSpots
+            .add(FlSpot((p.ts - minTs).toDouble(), p.ambientTMin!));
+        tempMaxSpots
+            .add(FlSpot((p.ts - minTs).toDouble(), p.ambientTMax!));
+      }
     }
 
-    // Build spots for humidity.
+    // Build spots for humidity (avg/min/max).
     final humSpots = <FlSpot>[];
+    final humMinSpots = <FlSpot>[];
+    final humMaxSpots = <FlSpot>[];
     for (final p in points) {
       if (p.ambientH != null) {
         humSpots.add(FlSpot((p.ts - minTs).toDouble(), p.ambientH!));
+      }
+      if (p.hasHumidityBand) {
+        humMinSpots
+            .add(FlSpot((p.ts - minTs).toDouble(), p.ambientHMin!));
+        humMaxSpots
+            .add(FlSpot((p.ts - minTs).toDouble(), p.ambientHMax!));
       }
     }
 
@@ -66,10 +82,18 @@ class _HistoryChartState extends State<HistoryChart> {
       );
     }
 
-    // Compute Y range from visible series.
+    // Compute Y range from visible series (include min/max band when present).
     final visibleY = <double>[];
-    if (_showTemp) visibleY.addAll(tempSpots.map((s) => s.y));
-    if (_showHumidity) visibleY.addAll(humSpots.map((s) => s.y));
+    if (_showTemp) {
+      visibleY.addAll(tempSpots.map((s) => s.y));
+      visibleY.addAll(tempMinSpots.map((s) => s.y));
+      visibleY.addAll(tempMaxSpots.map((s) => s.y));
+    }
+    if (_showHumidity) {
+      visibleY.addAll(humSpots.map((s) => s.y));
+      visibleY.addAll(humMinSpots.map((s) => s.y));
+      visibleY.addAll(humMaxSpots.map((s) => s.y));
+    }
     if (visibleY.isEmpty) visibleY.addAll(tempSpots.map((s) => s.y));
 
     final minY = visibleY.reduce((a, b) => a < b ? a : b) - 2;
@@ -103,12 +127,57 @@ class _HistoryChartState extends State<HistoryChart> {
           ),
         );
 
-    final lineBars = <LineChartBarData>[];
-    if (_showTemp && tempSpots.length >= 2) {
-      lineBars.add(buildLine(tempSpots, VenaColors.tempLine));
+    /// Phase 5 — min/max band. Renders `_max` as an invisible line and
+    /// fills the area DOWN to `_min` (cutOffY = belowBarSpotsVisible up to
+    /// the min line) using fl_chart's "two-line band" pattern.
+    List<LineChartBarData> buildBand(
+      List<FlSpot> minSpots,
+      List<FlSpot> maxSpots,
+      Color color,
+    ) {
+      if (minSpots.length < 2 || maxSpots.length < 2) return const [];
+      return [
+        // Min line — invisible (just an anchor for the band's lower edge).
+        LineChartBarData(
+          spots: minSpots,
+          isCurved: true,
+          curveSmoothness: 0.25,
+          color: color.withValues(alpha: 0.0),
+          barWidth: 0,
+          dotData: const FlDotData(show: false),
+        ),
+        // Max line — invisible, filled down to the min line above via
+        // belowBarData + applyCutOffY semantics.
+        LineChartBarData(
+          spots: maxSpots,
+          isCurved: true,
+          curveSmoothness: 0.25,
+          color: color.withValues(alpha: 0.0),
+          barWidth: 0,
+          dotData: const FlDotData(show: false),
+          belowBarData: BarAreaData(
+            show: true,
+            color: color.withValues(alpha: 0.14),
+            spotsLine: const BarAreaSpotsLine(show: false),
+            cutOffY: 0,
+            applyCutOffY: false,
+          ),
+        ),
+      ];
     }
-    if (_showHumidity && humSpots.length >= 2) {
-      lineBars.add(buildLine(humSpots, VenaColors.humidityLine));
+
+    final lineBars = <LineChartBarData>[];
+    if (_showTemp) {
+      lineBars.addAll(buildBand(tempMinSpots, tempMaxSpots, VenaColors.tempLine));
+      if (tempSpots.length >= 2) {
+        lineBars.add(buildLine(tempSpots, VenaColors.tempLine));
+      }
+    }
+    if (_showHumidity) {
+      lineBars.addAll(buildBand(humMinSpots, humMaxSpots, VenaColors.humidityLine));
+      if (humSpots.length >= 2) {
+        lineBars.add(buildLine(humSpots, VenaColors.humidityLine));
+      }
     }
 
     return Column(

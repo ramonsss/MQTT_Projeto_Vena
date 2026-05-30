@@ -203,6 +203,9 @@ void main() {
           ),
 
           // ── History ───────────────────────────────────────────────────
+          historyProvider(_kDeviceId, HistoryRange.h1).overrideWith(
+            (ref) async => _historyPoints(),
+          ),
           historyProvider(_kDeviceId, HistoryRange.h24).overrideWith(
             (ref) async => _historyPoints(),
           ),

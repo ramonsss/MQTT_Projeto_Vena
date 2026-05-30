@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'api_client.dart';
 import 'models/device_dto.dart';
+import 'models/device_meta.dart';
 import 'models/telemetry_point.dart';
 
 class DeviceApi {
@@ -36,22 +37,115 @@ class DeviceApi {
         data: {'alias': alias},
       );
 
+  /// Phase 5 — Adaptive-bucket history.
+  ///
+  /// When [range] is provided, calls the new aggregated endpoint
+  /// (`/devices/{id}/history?range=...&bucket=...&metric=...`).
+  /// When [start] / [end] are provided instead, uses the legacy raw-row path.
+  ///
+  /// Always returns the unwrapped `samples` array as `List<TelemetryPoint>`.
+  /// Callers that need `bucket` / `range_start` / `range_end` should use
+  /// [fetchHistoryResponse] instead.
   Future<List<TelemetryPoint>> getHistory(
     String deviceId, {
-    required int start,
-    required int end,
+    String? range,
+    String bucket = 'auto',
+    String metric = 'all',
+    int? start,
+    int? end,
     int limit = 500,
   }) async {
-    final response = await _dio.get<List<dynamic>>(
-      '/devices/$deviceId/history',
-      queryParameters: {'start': start, 'end': end, 'limit': limit},
+    final resp = await fetchHistoryResponse(
+      deviceId,
+      range: range,
+      bucket: bucket,
+      metric: metric,
+      start: start,
+      end: end,
+      limit: limit,
     );
-    return response.data!
-        .map((e) => TelemetryPoint.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return resp.samples;
   }
+
+  /// Same as [getHistory] but returns the full `HistoryResponse` envelope
+  /// (with `bucket`, `range_start`, `range_end`).
+  Future<HistoryResponse> fetchHistoryResponse(
+    String deviceId, {
+    String? range,
+    String bucket = 'auto',
+    String metric = 'all',
+    int? start,
+    int? end,
+    int limit = 500,
+  }) async {
+    final query = <String, dynamic>{'limit': limit};
+    if (start != null || end != null) {
+      if (start != null) query['start'] = start;
+      if (end != null) query['end'] = end;
+    } else {
+      query['range'] = range ?? '24h';
+      query['bucket'] = bucket;
+      query['metric'] = metric;
+    }
+
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/devices/$deviceId/history',
+      queryParameters: query,
+    );
+    return HistoryResponse.fromJson(response.data!);
+  }
+
+  /// Phase 5 — last `meta` payload published by the ESP32.
+  ///
+  /// Returns `null` when the backend responds 404 (device never published).
+  Future<DeviceMeta?> getMeta(String deviceId) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/devices/$deviceId/meta',
+      );
+      return DeviceMeta.fromJson(response.data!);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return null;
+      rethrow;
+    }
+  }
+}
+
+/// Envelope returned by `GET /devices/{id}/history`.
+class HistoryResponse {
+  const HistoryResponse({
+    required this.deviceId,
+    required this.count,
+    required this.samples,
+    this.bucket,
+    this.rangeStart,
+    this.rangeEnd,
+  });
+
+  final String deviceId;
+  final int count;
+  final List<TelemetryPoint> samples;
+  final String? bucket;
+  final DateTime? rangeStart;
+  final DateTime? rangeEnd;
+
+  factory HistoryResponse.fromJson(Map<String, dynamic> json) => HistoryResponse(
+        deviceId: json['device_id'] as String,
+        count: (json['count'] as num).toInt(),
+        samples: (json['samples'] as List<dynamic>)
+            .map((e) => TelemetryPoint.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        bucket: json['bucket'] as String?,
+        rangeStart: json['range_start'] == null
+            ? null
+            : DateTime.parse(json['range_start'] as String),
+        rangeEnd: json['range_end'] == null
+            ? null
+            : DateTime.parse(json['range_end'] as String),
+      );
 }
 
 final deviceApiProvider = Provider<DeviceApi>((ref) {
   return DeviceApi(ref.read(apiClientProvider));
 });
+
