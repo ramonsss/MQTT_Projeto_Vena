@@ -43,6 +43,7 @@ services:
   mosquitto:
     image: iegomez/mosquitto-go-auth:latest
     restart: unless-stopped
+    user: "0"  # root — necessário para ler certs do Caddy (modo 600, dono root)
     ports:
       - "127.0.0.1:1883:1883"   # interno — FastAPI worker acessa via bridge
       - "8883:8883"              # externo — MQTT/TLS para dispositivos e app
