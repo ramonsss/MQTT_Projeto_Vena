@@ -27,8 +27,6 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
-      # Compartilha certificados com Mosquitto (leitura de /data/caddy/certificates)
-      - caddy_data:/caddy_certs:ro
     networks:
       - vena_net
     depends_on:
@@ -43,9 +41,22 @@ services:
   mosquitto:
     image: iegomez/mosquitto-go-auth:latest
     restart: unless-stopped
-    user: "0"  # root — necessário para chmod nos certs do Caddy
-    # Abre permissões nos certs antes de iniciar; sem isso OpenSSL recusa leitura
-    entrypoint: ["/bin/sh", "-c", "chmod -R 644 /caddy_certs/caddy/certificates/ && find /caddy_certs/caddy/certificates/ -type d -exec chmod 755 {} \\; && exec mosquitto -c /etc/mosquitto/mosquitto.conf"]
+    user: "0"  # root — necessário para ler certs do Caddy e copiá-los
+    # Copia os certs do volume read-only do Caddy para um volume writable,
+    # ajusta permissões e então inicia o Mosquitto.
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        CERT_SRC=/caddy_certs/caddy/certificates/acme-v02.api.letsencrypt.org-directory/vena-demo.duckdns.org
+        CERT_DST=/mosquitto/certs
+        mkdir -p "$$CERT_DST"
+        cp "$$CERT_SRC/vena-demo.duckdns.org.crt" "$$CERT_DST/server.crt"
+        cp "$$CERT_SRC/vena-demo.duckdns.org.key" "$$CERT_DST/server.key"
+        chmod 644 "$$CERT_DST/server.crt"
+        chmod 600 "$$CERT_DST/server.key"
+        exec mosquitto -c /etc/mosquitto/mosquitto.conf
     ports:
       - "127.0.0.1:1883:1883"   # interno — FastAPI worker acessa via bridge
       - "8883:8883"              # externo — MQTT/TLS para dispositivos e app
@@ -54,8 +65,8 @@ services:
       - ./mosquitto/passwd:/etc/mosquitto/passwd:ro
       - mosquitto_data:/mosquitto/data
       - mosquitto_log:/mosquitto/log
-      # Certificados gerados pelo Caddy — sem :ro para o chmod do entrypoint funcionar
-      - caddy_data:/caddy_certs
+      - mosquitto_certs:/mosquitto/certs       # volume writable para os certs copiados
+      - caddy_data:/caddy_certs:ro             # leitura dos certs originais do Caddy
     networks:
       - vena_net
     depends_on:
@@ -93,6 +104,7 @@ volumes:
   caddy_config:
   mosquitto_data:
   mosquitto_log:
+  mosquitto_certs:
 
 networks:
   vena_net:
