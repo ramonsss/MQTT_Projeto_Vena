@@ -11,7 +11,10 @@ class AuthRepository {
 
   final SecureTokenStorage _storage;
 
-  final _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+  final _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+    serverClientId: Env.googleClientId.isNotEmpty ? Env.googleClientId : null,
+  );
 
   // Dedicated Dio without auth interceptor to avoid circular dependency.
   late final _dio = Dio(

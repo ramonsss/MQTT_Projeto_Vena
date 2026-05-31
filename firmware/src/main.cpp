@@ -18,12 +18,11 @@
 #include "WifiProvisioner.h"
 
 namespace {
-    SensorManager sensors(PIN_DHT_AMBIENT, PIN_DHT_DISSIPATOR);
-    PeltierController peltier(PIN_PELTIER_PWM, PIN_FAN_INT_PWM, PIN_FAN_EXT_PWM,
+    SensorManager sensors(PIN_DHT_AMBIENT, PIN_DHT_DISSIPATOR, PIN_ONEWIRE);
+    PeltierController peltier(PIN_PELTIER_PWM,
                               PID_KP, PID_KI, PID_KD,
                               PID_SAMPLE_MS,
-                              PID_OUTPUT_MIN, PID_OUTPUT_MAX,
-                              PID_SLEW_PER_SEC);
+                              PID_OUTPUT_MIN, PID_OUTPUT_MAX);
     DisplayManager display(LCD_I2C_ADDR, 20, 4);
     OfflineBuffer buffer(OFFLINE_BUFFER_SIZE);
     MqttPublisher mqtt(WIFI_SSID, WIFI_PASS, MQTT_HOST, MQTT_PORT);
@@ -303,11 +302,16 @@ void loop() {
     if (now - lastPidMs >= PID_SAMPLE_MS) {
         lastPidMs = now;
         float t, h;
+        // DHT22 no dissipador: lê umidade (monitoramento).
         if (sensors.readDissipator(t, h)) {
-            lastDissT = t;
             lastDissH = h;
+        }
+        // DS18B20: temperatura precisa para PID.
+        float ds18Temp;
+        if (sensors.readDS18B20(ds18Temp)) {
+            lastDissT = ds18Temp;
         } else {
-            Serial.println("[DHT] dissipador leitura invalida (mantendo ultimo)");
+            Serial.println("[DS18B20] leitura invalida (mantendo ultimo)");
         }
         if (!isnan(lastDissT)) {
             peltier.update(lastDissT);
