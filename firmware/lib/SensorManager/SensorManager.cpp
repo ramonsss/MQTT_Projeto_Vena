@@ -1,23 +1,17 @@
 #include "SensorManager.h"
 
-SensorManager::SensorManager(uint8_t pinAmbient, uint8_t pinDissipator, uint8_t pinOneWire)
+SensorManager::SensorManager(uint8_t pinAmbient, uint8_t pinOneWire)
     : _ambient(pinAmbient, DHT22),
-      _dissipator(pinDissipator, DHT22),
       _oneWire(pinOneWire),
       _ds18b20(&_oneWire) {}
 
 void SensorManager::begin() {
     _ambient.begin();
-    _dissipator.begin();
     _ds18b20.begin();
 }
 
 bool SensorManager::readAmbient(float& tempC, float& humidity) {
     return readSensor(_ambient, _ambientCache, tempC, humidity);
-}
-
-bool SensorManager::readDissipator(float& tempC, float& humidity) {
-    return readSensor(_dissipator, _dissipatorCache, tempC, humidity);
 }
 
 bool SensorManager::readDS18B20(float& tempC) {

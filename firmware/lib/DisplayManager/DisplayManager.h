@@ -8,7 +8,7 @@ public:
     DisplayManager(uint8_t i2cAddr, uint8_t cols, uint8_t rows);
 
     void begin();
-    void showStatus(float ambT, float ambH, float dissT, float setpoint, bool mqttUp);
+    void showStatus(float ambT, float ambH, float dissT, float pidOut, bool mqttUp);
 
 private:
     void writeLineIfChanged(uint8_t row, const String& text);

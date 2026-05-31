@@ -18,7 +18,7 @@
 #include "WifiProvisioner.h"
 
 namespace {
-    SensorManager sensors(PIN_DHT_AMBIENT, PIN_DHT_DISSIPATOR, PIN_ONEWIRE);
+    SensorManager sensors(PIN_DHT_AMBIENT, PIN_ONEWIRE);
     PeltierController peltier(PIN_PELTIER_PWM,
                               PID_KP, PID_KI, PID_KD,
                               PID_SAMPLE_MS,
@@ -37,7 +37,7 @@ namespace {
     uint32_t seqCounter = 0;
 
     float lastAmbT = NAN, lastAmbH = NAN;
-    float lastDissT = NAN, lastDissH = NAN;
+    float lastDissT = NAN;
 
     unsigned long lastPidMs = 0;
     unsigned long lastDisplayMs = 0;
@@ -124,7 +124,6 @@ static String buildTelemetryJson() {
     doc["ambient_t"] = lastAmbT;
     doc["ambient_h"] = lastAmbH;
     doc["diss_t"] = lastDissT;
-    doc["diss_h"] = lastDissH;
     doc["setpoint"] = peltier.currentSetpoint();
     doc["pid_out"] = peltier.lastOutput();
     doc["uptime_ms"] = (uint32_t)millis();
@@ -148,7 +147,6 @@ static String buildBleTelemetryJson() {
     doc["at"] = lastAmbT;
     doc["ah"] = lastAmbH;
     doc["dt"] = lastDissT;
-    doc["dh"] = lastDissH;
     doc["sp"] = peltier.currentSetpoint();
     doc["po"] = peltier.lastOutput();
     String out;
@@ -301,12 +299,6 @@ void loop() {
 
     if (now - lastPidMs >= PID_SAMPLE_MS) {
         lastPidMs = now;
-        float t, h;
-        // DHT22 no dissipador: lê umidade (monitoramento).
-        if (sensors.readDissipator(t, h)) {
-            lastDissH = h;
-        }
-        // DS18B20: temperatura precisa para PID.
         float ds18Temp;
         if (sensors.readDS18B20(ds18Temp)) {
             lastDissT = ds18Temp;
@@ -328,7 +320,7 @@ void loop() {
             Serial.println("[DHT] ambiente leitura invalida (mantendo ultimo)");
         }
         display.showStatus(lastAmbT, lastAmbH, lastDissT,
-                           peltier.currentSetpoint(), mqtt.isConnected());
+                           peltier.lastOutput(), mqtt.isConnected());
     }
 
     // BLE telemetry notify (every 2s, independent of MQTT 5s)

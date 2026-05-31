@@ -60,7 +60,8 @@ void BleManager::init(const char* deviceName, const char* deviceId,
     );
     _pairingCodeChar->setValue(pairingCode);
 
-    // service->start() is deprecated in NimBLE 2.x — services start with the server
+    service->start();
+    _server->start();
 
     Serial.printf("[BLE] GATT service started, device=%s\n", deviceName);
     startAdvertising();
@@ -69,7 +70,6 @@ void BleManager::init(const char* deviceName, const char* deviceId,
 void BleManager::startAdvertising() {
     NimBLEAdvertising* adv = NimBLEDevice::getAdvertising();
     adv->addServiceUUID(VENA_SERVICE_UUID);
-    adv->setName(NimBLEDevice::getAddress().toString());
     adv->enableScanResponse(true);
     adv->start();
     Serial.println("[BLE] advertising started");

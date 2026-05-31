@@ -10,19 +10,22 @@ void DisplayManager::begin() {
     for (uint8_t r = 0; r < 4; ++r) _lastLines[r] = "";
 }
 
-void DisplayManager::showStatus(float ambT, float ambH, float dissT, float setpoint, bool mqttUp) {
+void DisplayManager::showStatus(float ambT, float ambH, float dissT, float pidOut, bool mqttUp) {
     char buf[21];
 
-    snprintf(buf, sizeof(buf), "Ambiente T:%5.1fC", ambT);
+    if (isnan(ambT)) snprintf(buf, sizeof(buf), "Ambiente T: --.-C");
+    else             snprintf(buf, sizeof(buf), "Ambiente T:%5.1fC", ambT);
     writeLineIfChanged(0, buf);
 
-    snprintf(buf, sizeof(buf), "Ambiente U:%4.0f%%", ambH);
+    if (isnan(ambH)) snprintf(buf, sizeof(buf), "Ambiente U: -- %%");
+    else             snprintf(buf, sizeof(buf), "Ambiente U:%4.0f%%", ambH);
     writeLineIfChanged(1, buf);
 
-    snprintf(buf, sizeof(buf), "Peltier  T:%5.1fC", dissT);
+    if (isnan(dissT)) snprintf(buf, sizeof(buf), "Peltier  T: --.-C");
+    else              snprintf(buf, sizeof(buf), "Peltier  T:%5.1fC", dissT);
     writeLineIfChanged(2, buf);
 
-    snprintf(buf, sizeof(buf), "SP:%4.1f MQTT:%s", setpoint, mqttUp ? "OK " : "OFF");
+    snprintf(buf, sizeof(buf), "PID:%3.0f%%  MQTT:%s", (pidOut / 255.0f) * 100.0f, mqttUp ? "OK " : "OFF");
     writeLineIfChanged(3, buf);
 }
 

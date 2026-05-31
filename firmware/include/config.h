@@ -1,10 +1,7 @@
 #pragma once
 
-#ifndef PIN_DHT_DISSIPATOR
-#define PIN_DHT_DISSIPATOR 4
-#endif
 #ifndef PIN_DHT_AMBIENT
-#define PIN_DHT_AMBIENT 15
+#define PIN_DHT_AMBIENT 4
 #endif
 
 #ifndef PIN_PELTIER_PWM
