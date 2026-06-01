@@ -52,7 +52,11 @@ async def seed(mac: str) -> None:
     pairing_code = generate_pairing_code(mac)
     pairing_hash = hash_pairing_code(pairing_code)
 
-    engine = create_async_engine(settings.database_url, echo=False)
+    engine = create_async_engine(
+        settings.database_url,
+        echo=False,
+        connect_args={"statement_cache_size": 0},
+    )
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with async_session() as session:
