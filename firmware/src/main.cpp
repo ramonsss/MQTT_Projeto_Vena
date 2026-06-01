@@ -44,6 +44,11 @@ namespace {
     unsigned long lastTelemetryMs = 0;
     unsigned long lastBleNotifyMs = 0;
 
+    // Pending provisioning — set by BLE callback, consumed by loop()
+    bool pendingProvision = false;
+    WifiCredentials pendingCreds;
+    bool wifiWasConnected = false;  // track WiFi state changes for BLE notify
+
     // Phase 5 — meta payload tracking
     uint32_t bootCount = 0;
     uint32_t freeHeapBoot = 0;
@@ -154,47 +159,15 @@ static String buildBleTelemetryJson() {
     return out;
 }
 
+// Called from the NimBLE host task — must return immediately.
+// All WiFi operations are deferred to loop() via pendingProvision flag.
 static void onProvisionReceived(const WifiCredentials& creds) {
-    Serial.println("[PROV] saving credentials from BLE...");
+    Serial.println("[PROV] credentials received via BLE, deferring to main loop");
     provisioner.saveCredentials(creds.ssid, creds.psk, creds.jwt);
-
-    // Store JWT in NvsJwt for MqttPublisher (only if provided)
-    if (creds.jwt.length() > 0) {
-        nvs_store_jwt(creds.jwt);
-    }
-
-    // Attempt Wi-Fi connection with new credentials
-    WiFi.disconnect(true);
-    delay(100);
-    WiFi.begin(creds.ssid.c_str(), creds.psk.c_str());
-    Serial.printf("[PROV] connecting to WiFi: %s\n", creds.ssid.c_str());
-
-    unsigned long start = millis();
-    while (WiFi.status() != WL_CONNECTED && millis() - start < 15000) {
-        delay(200);
-    }
-
-    if (WiFi.status() == WL_CONNECTED) {
-        Serial.printf("[PROV] WiFi connected, IP=%s\n", WiFi.localIP().toString().c_str());
-        ble.updateWifiStatus(true, creds.ssid.c_str(),
-                             WiFi.localIP().toString().c_str(), WiFi.RSSI());
-        wifiProvisioned = true;
-
-        // Start MQTT with new JWT (if available)
-        if (creds.jwt.length() > 0) {
-            mqtt.setJwt(creds.jwt);
-        }
-        mqtt.begin(deviceId);
-
-        // Sync NTP now that we have network
-        if (!ntpReady) {
-            ntpReady = waitForNtp();
-            if (ntpReady) Serial.println("[NTP] sincronizado apos provisioning");
-        }
-    } else {
-        Serial.println("[PROV] WiFi connection failed");
-        ble.updateWifiStatus(false);
-    }
+    if (creds.jwt.length() > 0) nvs_store_jwt(creds.jwt);
+    pendingCreds = creds;
+    pendingProvision = true;
+    // Return immediately so NimBLE can send the BLE Write Response.
 }
 
 void setup() {
@@ -276,11 +249,43 @@ void setup() {
         ble.updateWifiStatus(false);
     }
 
+    // Initialise wifiWasConnected so loop() doesn't re-fire on first tick.
+    wifiWasConnected = (WiFi.status() == WL_CONNECTED);
+
     Serial.printf("[BOOT] Vena pronta (heap=%u bytes)\n", ESP.getFreeHeap());
 }
 
 void loop() {
     const unsigned long now = millis();
+
+    // ── Handle pending WiFi provisioning (deferred from BLE callback) ───────
+    if (pendingProvision) {
+        pendingProvision = false;
+        Serial.printf("[PROV] connecting to WiFi: %s\n", pendingCreds.ssid.c_str());
+        WiFi.disconnect(true);
+        WiFi.begin(pendingCreds.ssid.c_str(), pendingCreds.psk.c_str());
+        if (pendingCreds.jwt.length() > 0) {
+            mqtt.setJwt(pendingCreds.jwt);
+        }
+        wifiProvisioned = true;
+    }
+
+    // ── Track WiFi connection state and update BLE wifi_status ──────────────
+    bool currentWifiConnected = (WiFi.status() == WL_CONNECTED);
+    if (currentWifiConnected && !wifiWasConnected) {
+        wifiWasConnected = true;
+        Serial.printf("[WIFI] connected, IP=%s\n", WiFi.localIP().toString().c_str());
+        ble.updateWifiStatus(true, WiFi.SSID().c_str(),
+                             WiFi.localIP().toString().c_str(), WiFi.RSSI());
+        if (!ntpReady) {
+            ntpReady = waitForNtp();
+            if (ntpReady) Serial.println("[NTP] sincronizado");
+        }
+    } else if (!currentWifiConnected && wifiWasConnected) {
+        wifiWasConnected = false;
+        ble.updateWifiStatus(false);
+    }
+
     mqtt.loop();
 
     // Phase 5 — track min free heap continuously to detect leaks.

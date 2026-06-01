@@ -321,6 +321,9 @@ class PairingNotifier extends _$PairingNotifier {
     if (msg.contains('404')) {
       return 'Dispositivo não encontrado. Verifique o código QR.';
     }
+    if (msg.contains('403') || msg.contains('forbidden') || msg.contains('invalid pairing')) {
+      return 'Código de pareamento inválido. Reescanei o QR do dispositivo.';
+    }
     if (msg.contains('ble write')) {
       return 'Falha ao enviar credenciais via Bluetooth. Aproxime o dispositivo.';
     }

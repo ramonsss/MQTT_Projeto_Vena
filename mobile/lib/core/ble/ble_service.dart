@@ -145,7 +145,10 @@ class BleService {
 
   /// Sends Wi-Fi credentials + optional JWT to the provisioning characteristic.
   Future<bool> provisionWifi(BleWifiCredentials creds) async {
-    if (_connectedDeviceId == null) return false;
+    if (_connectedDeviceId == null) {
+      debugPrint('[BLE] provision write error: not connected (_connectedDeviceId is null)');
+      return false;
+    }
     try {
       final char = QualifiedCharacteristic(
         serviceId: Uuid.parse(BleUuids.serviceUuid),
@@ -153,7 +156,9 @@ class BleService {
         deviceId: _connectedDeviceId!,
       );
       final payload = utf8.encode(jsonEncode(creds.toJson()));
+      debugPrint('[BLE] provision write: ${payload.length} bytes to ${_connectedDeviceId}');
       await _ble.writeCharacteristicWithResponse(char, value: payload);
+      debugPrint('[BLE] provision write: success');
       return true;
     } catch (e) {
       debugPrint('[BLE] provision write error: $e');
