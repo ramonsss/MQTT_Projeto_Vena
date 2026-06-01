@@ -69,6 +69,7 @@ void BleManager::init(const char* deviceName, const char* deviceId,
 
 void BleManager::startAdvertising() {
     NimBLEAdvertising* adv = NimBLEDevice::getAdvertising();
+    adv->setName(NimBLEDevice::getDeviceName());
     adv->addServiceUUID(VENA_SERVICE_UUID);
     adv->enableScanResponse(true);
     adv->start();
