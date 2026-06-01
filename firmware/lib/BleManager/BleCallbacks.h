@@ -24,6 +24,7 @@ public:
         if (_mgr._clientCount > 0) _mgr._clientCount--;
         Serial.printf("[BLE] client disconnected (%d remain), reason=%d\n",
                       _mgr._clientCount, reason);
+        NimBLEDevice::deleteAllBonds();  // clear stale bonds — every connection is fresh
         // Resume advertising so another client can connect
         _mgr.startAdvertising();
     }
