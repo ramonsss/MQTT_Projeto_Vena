@@ -8,8 +8,10 @@ void BleManager::init(const char* deviceName, const char* deviceId,
                       const char* pairingCode, const char* fwVersion) {
     strncpy(_deviceName, deviceName, sizeof(_deviceName) - 1);
     NimBLEDevice::init(deviceName);
+    NimBLEDevice::deleteAllBonds();  // clear stale NVS bonds from previous firmware
     NimBLEDevice::setMTU(BLE_MTU);
     NimBLEDevice::setSecurityAuth(false, false, false);  // no bonding — security handled by backend
+    NimBLEDevice::setSecurityIOCap(BLE_HS_IO_NO_INPUT_OUTPUT);
 
     _server = NimBLEDevice::createServer();
     _server->setCallbacks(new VenaServerCallbacks(*this));
