@@ -9,7 +9,7 @@ void BleManager::init(const char* deviceName, const char* deviceId,
     strncpy(_deviceName, deviceName, sizeof(_deviceName) - 1);
     NimBLEDevice::init(deviceName);
     NimBLEDevice::setMTU(BLE_MTU);
-    NimBLEDevice::setSecurityAuth(true, false, true);  // bonding, no MITM, SC
+    NimBLEDevice::setSecurityAuth(false, false, false);  // no bonding — security handled by backend
 
     _server = NimBLEDevice::createServer();
     _server->setCallbacks(new VenaServerCallbacks(*this));
@@ -54,10 +54,10 @@ void BleManager::init(const char* deviceName, const char* deviceId,
     );
     _provisionChar->setCallbacks(new ProvisionWriteCallbacks(*this));
 
-    // pairing_code (Read, encrypted — requires bonding)
+    // pairing_code (Read — security enforced by backend bcrypt + PAIRING_SECRET)
     _pairingCodeChar = service->createCharacteristic(
         CHAR_PAIRING_CODE_UUID,
-        NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::READ_ENC
+        NIMBLE_PROPERTY::READ
     );
     _pairingCodeChar->setValue(pairingCode);
 
