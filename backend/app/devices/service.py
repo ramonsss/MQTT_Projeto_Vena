@@ -32,11 +32,9 @@ async def claim_device(
             UserDevice.device_id == device_id,
         )
     )
-    if result.scalar_one_or_none() is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Device already claimed by this user",
-        )
+    existing_ud = result.scalar_one_or_none()
+    if existing_ud is not None:
+        return ClaimResponse(device_id=device_id, alias=existing_ud.alias, claimed_at=existing_ud.claimed_at)
 
     ud = UserDevice(user_id=user.id, device_id=device_id)
     session.add(ud)
