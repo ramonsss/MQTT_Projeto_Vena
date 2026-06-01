@@ -85,18 +85,19 @@ void MqttPublisher::ensureMqtt() {
     _mqtt.disconnect();
     _mqtt.setServer(_mqttHost, _mqttPort);
 
-#if MQTT_USE_AUTH
-    // Use device JWT as username; broker validates via /mqtt/auth.
-    // mosquitto-go-auth rejects empty passwords before calling the HTTP backend,
-    // so a fixed non-empty placeholder is required alongside the JWT.
-    if (!_jwtCredential.isEmpty()) {
-        _mqtt.setCredentials(_jwtCredential.c_str(), "vena");
-    }
-#endif
-
     // PubSubClient::connect with will: topic, QoS 1, retain true, payload
+#if MQTT_USE_AUTH
+    const bool ok = !_jwtCredential.isEmpty()
+        ? _mqtt.connect(_deviceId.c_str(),
+                        _jwtCredential.c_str(), "vena",
+                        _topicStatus.c_str(), 1, true, "{\"online\":false}")
+        : _mqtt.connect(_deviceId.c_str(),
+                        _topicStatus.c_str(), 1, true, "{\"online\":false}");
+    if (ok) {
+#else
     if (_mqtt.connect(_deviceId.c_str(),
                       _topicStatus.c_str(), 1, true, "{\"online\":false}")) {
+#endif
         // Publish online status (retained)
         String statusPayload = String("{\"online\":true,\"fw_version\":\"") + FW_VERSION + "\"}";
         _mqtt.publish(_topicStatus.c_str(), statusPayload.c_str(), true);

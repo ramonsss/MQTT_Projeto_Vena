@@ -1,41 +1,31 @@
 #pragma once
 
-#ifndef PIN_DHT_DISSIPATOR
-#define PIN_DHT_DISSIPATOR 4
-#endif
 #ifndef PIN_DHT_AMBIENT
-#define PIN_DHT_AMBIENT 15
+#define PIN_DHT_AMBIENT 4
 #endif
 
 #ifndef PIN_PELTIER_PWM
-#define PIN_PELTIER_PWM 25
+#define PIN_PELTIER_PWM 18
 #endif
-#ifndef PIN_FAN_INT_PWM
-#define PIN_FAN_INT_PWM 26
-#endif
-#ifndef PIN_FAN_EXT_PWM
-#define PIN_FAN_EXT_PWM 27
+
+// DS18B20 OneWire — dissipator temperature (more precise than DHT22 for PID)
+#ifndef PIN_ONEWIRE
+#define PIN_ONEWIRE 27
 #endif
 
 #ifndef PIN_LCD_SDA
 #define PIN_LCD_SDA 21
 #endif
 #ifndef PIN_LCD_SCL
-#define PIN_LCD_SCL 22
+#define PIN_LCD_SCL 26
 #endif
 #ifndef LCD_I2C_ADDR
 #define LCD_I2C_ADDR 0x27
 #endif
 
-// Canais LEDC distintos por carga PWM.
+// Canal LEDC da Peltier
 #ifndef LEDC_CH_PELTIER
 #define LEDC_CH_PELTIER 0
-#endif
-#ifndef LEDC_CH_FAN_INT
-#define LEDC_CH_FAN_INT 1
-#endif
-#ifndef LEDC_CH_FAN_EXT
-#define LEDC_CH_FAN_EXT 2
 #endif
 #ifndef LEDC_FREQ_HZ
 #define LEDC_FREQ_HZ 20000  // 20 kHz: acima da audição e suportado pelos MOSFETs
@@ -45,29 +35,26 @@
 #endif
 
 #ifndef PID_KP
-#define PID_KP 2.0
+#define PID_KP 40.0
 #endif
 #ifndef PID_KI
 #define PID_KI 0.5
 #endif
 #ifndef PID_KD
-#define PID_KD 1.0
+#define PID_KD 10.0
 #endif
 #ifndef PID_SAMPLE_MS
-#define PID_SAMPLE_MS 2000  // DHT22 limita ~0.5 Hz; abaixo disso a leitura repete
+#define PID_SAMPLE_MS 200  // DS18B20 atualiza rapido; ciclo PID a cada 200ms
 #endif
 #ifndef PID_OUTPUT_MIN
-#define PID_OUTPUT_MIN -255.0
+#define PID_OUTPUT_MIN 0.0
 #endif
 #ifndef PID_OUTPUT_MAX
 #define PID_OUTPUT_MAX 255.0
 #endif
-#ifndef PID_SLEW_PER_SEC
-#define PID_SLEW_PER_SEC 20.0  // protege a Peltier de degrau térmico
-#endif
 
 #ifndef SETPOINT_C
-#define SETPOINT_C 18.0
+#define SETPOINT_C 13.0
 #endif
 
 #ifndef WIFI_SSID

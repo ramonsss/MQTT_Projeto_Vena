@@ -33,22 +33,38 @@ class ProvisioningService {
     required String psk,
   }) async {
     // 1. Get device JWT from backend
+    debugPrint('[Provisioning] step 1: POST /devices/provision deviceId=$deviceId');
     final deviceJwt = await _deviceApi.provisionDevice(deviceId, pairingCode);
+    debugPrint('[Provisioning] step 1 ok: jwt received (${deviceJwt.length} chars)');
 
     // 2. Write credentials to BLE
+    debugPrint('[Provisioning] step 2: BLE write wifi_provisioning ssid=$ssid');
     final creds = BleWifiCredentials(ssid: ssid, password: psk, jwt: deviceJwt);
     final written = await _bleService.provisionWifi(creds);
+    debugPrint('[Provisioning] step 2 result: written=$written');
     if (!written) throw Exception('BLE write to wifi_provisioning failed');
 
     // 3. Poll wifi_status until connected (max 30s)
+    debugPrint('[Provisioning] step 3: polling wifi_status (30s timeout)');
+    int pollCount = 0;
     final deadline = DateTime.now().add(const Duration(seconds: 30));
     while (DateTime.now().isBefore(deadline)) {
       await Future<void>.delayed(const Duration(seconds: 2));
-      final status = await _bleService.readWifiStatus();
-      debugPrint('[Provisioning] wifi_status: ${status?.connected}');
-      if (status?.connected == true) return true;
+      pollCount++;
+      BleWifiStatus? status;
+      try {
+        status = await _bleService.readWifiStatus();
+      } catch (e) {
+        debugPrint('[Provisioning] poll #$pollCount readWifiStatus error: $e');
+      }
+      debugPrint('[Provisioning] poll #$pollCount wifi_status: connected=${status?.connected} ssid=${status?.ssid} ip=${status?.ip}');
+      if (status?.connected == true) {
+        debugPrint('[Provisioning] step 3 ok: ESP32 connected to WiFi');
+        return true;
+      }
     }
 
+    debugPrint('[Provisioning] step 3 TIMEOUT after $pollCount polls');
     throw TimeoutException(
       'Device did not connect to Wi-Fi within 30 seconds.',
     );

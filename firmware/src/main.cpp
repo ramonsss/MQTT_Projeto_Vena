@@ -18,12 +18,11 @@
 #include "WifiProvisioner.h"
 
 namespace {
-    SensorManager sensors(PIN_DHT_AMBIENT, PIN_DHT_DISSIPATOR);
-    PeltierController peltier(PIN_PELTIER_PWM, PIN_FAN_INT_PWM, PIN_FAN_EXT_PWM,
+    SensorManager sensors(PIN_DHT_AMBIENT, PIN_ONEWIRE);
+    PeltierController peltier(PIN_PELTIER_PWM,
                               PID_KP, PID_KI, PID_KD,
                               PID_SAMPLE_MS,
-                              PID_OUTPUT_MIN, PID_OUTPUT_MAX,
-                              PID_SLEW_PER_SEC);
+                              PID_OUTPUT_MIN, PID_OUTPUT_MAX);
     DisplayManager display(LCD_I2C_ADDR, 20, 4);
     OfflineBuffer buffer(OFFLINE_BUFFER_SIZE);
     MqttPublisher mqtt(WIFI_SSID, WIFI_PASS, MQTT_HOST, MQTT_PORT);
@@ -38,12 +37,17 @@ namespace {
     uint32_t seqCounter = 0;
 
     float lastAmbT = NAN, lastAmbH = NAN;
-    float lastDissT = NAN, lastDissH = NAN;
+    float lastDissT = NAN;
 
     unsigned long lastPidMs = 0;
     unsigned long lastDisplayMs = 0;
     unsigned long lastTelemetryMs = 0;
     unsigned long lastBleNotifyMs = 0;
+
+    // Pending provisioning — set by BLE callback, consumed by loop()
+    bool pendingProvision = false;
+    WifiCredentials pendingCreds;
+    bool wifiWasConnected = false;  // track WiFi state changes for BLE notify
 
     // Phase 5 — meta payload tracking
     uint32_t bootCount = 0;
@@ -125,7 +129,6 @@ static String buildTelemetryJson() {
     doc["ambient_t"] = lastAmbT;
     doc["ambient_h"] = lastAmbH;
     doc["diss_t"] = lastDissT;
-    doc["diss_h"] = lastDissH;
     doc["setpoint"] = peltier.currentSetpoint();
     doc["pid_out"] = peltier.lastOutput();
     doc["uptime_ms"] = (uint32_t)millis();
@@ -149,7 +152,6 @@ static String buildBleTelemetryJson() {
     doc["at"] = lastAmbT;
     doc["ah"] = lastAmbH;
     doc["dt"] = lastDissT;
-    doc["dh"] = lastDissH;
     doc["sp"] = peltier.currentSetpoint();
     doc["po"] = peltier.lastOutput();
     String out;
@@ -157,47 +159,15 @@ static String buildBleTelemetryJson() {
     return out;
 }
 
+// Called from the NimBLE host task — must return immediately.
+// All WiFi operations are deferred to loop() via pendingProvision flag.
 static void onProvisionReceived(const WifiCredentials& creds) {
-    Serial.println("[PROV] saving credentials from BLE...");
+    Serial.println("[PROV] credentials received via BLE, deferring to main loop");
     provisioner.saveCredentials(creds.ssid, creds.psk, creds.jwt);
-
-    // Store JWT in NvsJwt for MqttPublisher (only if provided)
-    if (creds.jwt.length() > 0) {
-        nvs_store_jwt(creds.jwt);
-    }
-
-    // Attempt Wi-Fi connection with new credentials
-    WiFi.disconnect(true);
-    delay(100);
-    WiFi.begin(creds.ssid.c_str(), creds.psk.c_str());
-    Serial.printf("[PROV] connecting to WiFi: %s\n", creds.ssid.c_str());
-
-    unsigned long start = millis();
-    while (WiFi.status() != WL_CONNECTED && millis() - start < 15000) {
-        delay(200);
-    }
-
-    if (WiFi.status() == WL_CONNECTED) {
-        Serial.printf("[PROV] WiFi connected, IP=%s\n", WiFi.localIP().toString().c_str());
-        ble.updateWifiStatus(true, creds.ssid.c_str(),
-                             WiFi.localIP().toString().c_str(), WiFi.RSSI());
-        wifiProvisioned = true;
-
-        // Start MQTT with new JWT (if available)
-        if (creds.jwt.length() > 0) {
-            mqtt.setJwt(creds.jwt);
-        }
-        mqtt.begin(deviceId);
-
-        // Sync NTP now that we have network
-        if (!ntpReady) {
-            ntpReady = waitForNtp();
-            if (ntpReady) Serial.println("[NTP] sincronizado apos provisioning");
-        }
-    } else {
-        Serial.println("[PROV] WiFi connection failed");
-        ble.updateWifiStatus(false);
-    }
+    if (creds.jwt.length() > 0) nvs_store_jwt(creds.jwt);
+    pendingCreds = creds;
+    pendingProvision = true;
+    // Return immediately so NimBLE can send the BLE Write Response.
 }
 
 void setup() {
@@ -279,11 +249,59 @@ void setup() {
         ble.updateWifiStatus(false);
     }
 
+    // Initialise wifiWasConnected so loop() doesn't re-fire on first tick.
+    wifiWasConnected = (WiFi.status() == WL_CONNECTED);
+
     Serial.printf("[BOOT] Vena pronta (heap=%u bytes)\n", ESP.getFreeHeap());
 }
 
 void loop() {
     const unsigned long now = millis();
+
+    // ── Handle pending WiFi provisioning (deferred from BLE callback) ───────
+    if (pendingProvision) {
+        pendingProvision = false;
+        Serial.printf("[PROV] starting WiFi connect: ssid='%s' psk_len=%u jwt=%s\n",
+                      pendingCreds.ssid.c_str(),
+                      pendingCreds.psk.length(),
+                      pendingCreds.jwt.isEmpty() ? "none" : "present");
+        WiFi.disconnect(true);
+        delay(50);
+        WiFi.begin(pendingCreds.ssid.c_str(), pendingCreds.psk.c_str());
+        if (pendingCreds.jwt.length() > 0) {
+            mqtt.setJwt(pendingCreds.jwt);
+        }
+        wifiProvisioned = true;
+        Serial.printf("[PROV] WiFi.begin() called, status=%d\n", WiFi.status());
+    }
+
+    // ── Track WiFi connection state and update BLE wifi_status ──────────────
+    bool currentWifiConnected = (WiFi.status() == WL_CONNECTED);
+    if (currentWifiConnected && !wifiWasConnected) {
+        wifiWasConnected = true;
+        Serial.printf("[WIFI] connected: ssid='%s' ip=%s rssi=%d\n",
+                      WiFi.SSID().c_str(),
+                      WiFi.localIP().toString().c_str(),
+                      WiFi.RSSI());
+        ble.updateWifiStatus(true, WiFi.SSID().c_str(),
+                             WiFi.localIP().toString().c_str(), WiFi.RSSI());
+        // Start MQTT now that we have WiFi (covers both cold boot and post-provision)
+        if (wifiProvisioned) {
+            mqtt.begin(deviceId);
+            mqtt.onCommand(handleCommand);
+            Serial.println("[PROV] mqtt.begin() called after WiFi connect");
+        }
+        if (!ntpReady) {
+            ntpReady = waitForNtp();
+            if (ntpReady) Serial.println("[NTP] sincronizado");
+            else Serial.println("[NTP] timeout apos provisioning");
+        }
+    } else if (!currentWifiConnected && wifiWasConnected) {
+        wifiWasConnected = false;
+        Serial.printf("[WIFI] disconnected, status=%d\n", WiFi.status());
+        ble.updateWifiStatus(false);
+    }
+
     mqtt.loop();
 
     // Phase 5 — track min free heap continuously to detect leaks.
@@ -302,12 +320,11 @@ void loop() {
 
     if (now - lastPidMs >= PID_SAMPLE_MS) {
         lastPidMs = now;
-        float t, h;
-        if (sensors.readDissipator(t, h)) {
-            lastDissT = t;
-            lastDissH = h;
+        float ds18Temp;
+        if (sensors.readDS18B20(ds18Temp)) {
+            lastDissT = ds18Temp;
         } else {
-            Serial.println("[DHT] dissipador leitura invalida (mantendo ultimo)");
+            Serial.println("[DS18B20] leitura invalida (mantendo ultimo)");
         }
         if (!isnan(lastDissT)) {
             peltier.update(lastDissT);
@@ -324,7 +341,7 @@ void loop() {
             Serial.println("[DHT] ambiente leitura invalida (mantendo ultimo)");
         }
         display.showStatus(lastAmbT, lastAmbH, lastDissT,
-                           peltier.currentSetpoint(), mqtt.isConnected());
+                           peltier.lastOutput(), mqtt.isConnected());
     }
 
     // BLE telemetry notify (every 2s, independent of MQTT 5s)
