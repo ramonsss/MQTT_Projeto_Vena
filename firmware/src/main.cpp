@@ -261,28 +261,44 @@ void loop() {
     // ── Handle pending WiFi provisioning (deferred from BLE callback) ───────
     if (pendingProvision) {
         pendingProvision = false;
-        Serial.printf("[PROV] connecting to WiFi: %s\n", pendingCreds.ssid.c_str());
+        Serial.printf("[PROV] starting WiFi connect: ssid='%s' psk_len=%u jwt=%s\n",
+                      pendingCreds.ssid.c_str(),
+                      pendingCreds.psk.length(),
+                      pendingCreds.jwt.isEmpty() ? "none" : "present");
         WiFi.disconnect(true);
+        delay(50);
         WiFi.begin(pendingCreds.ssid.c_str(), pendingCreds.psk.c_str());
         if (pendingCreds.jwt.length() > 0) {
             mqtt.setJwt(pendingCreds.jwt);
         }
         wifiProvisioned = true;
+        Serial.printf("[PROV] WiFi.begin() called, status=%d\n", WiFi.status());
     }
 
     // ── Track WiFi connection state and update BLE wifi_status ──────────────
     bool currentWifiConnected = (WiFi.status() == WL_CONNECTED);
     if (currentWifiConnected && !wifiWasConnected) {
         wifiWasConnected = true;
-        Serial.printf("[WIFI] connected, IP=%s\n", WiFi.localIP().toString().c_str());
+        Serial.printf("[WIFI] connected: ssid='%s' ip=%s rssi=%d\n",
+                      WiFi.SSID().c_str(),
+                      WiFi.localIP().toString().c_str(),
+                      WiFi.RSSI());
         ble.updateWifiStatus(true, WiFi.SSID().c_str(),
                              WiFi.localIP().toString().c_str(), WiFi.RSSI());
+        // Start MQTT now that we have WiFi (covers both cold boot and post-provision)
+        if (wifiProvisioned) {
+            mqtt.begin(deviceId);
+            mqtt.onCommand(handleCommand);
+            Serial.println("[PROV] mqtt.begin() called after WiFi connect");
+        }
         if (!ntpReady) {
             ntpReady = waitForNtp();
             if (ntpReady) Serial.println("[NTP] sincronizado");
+            else Serial.println("[NTP] timeout apos provisioning");
         }
     } else if (!currentWifiConnected && wifiWasConnected) {
         wifiWasConnected = false;
+        Serial.printf("[WIFI] disconnected, status=%d\n", WiFi.status());
         ble.updateWifiStatus(false);
     }
 
