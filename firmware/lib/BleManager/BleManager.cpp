@@ -6,6 +6,7 @@
 
 void BleManager::init(const char* deviceName, const char* deviceId,
                       const char* pairingCode, const char* fwVersion) {
+    strncpy(_deviceName, deviceName, sizeof(_deviceName) - 1);
     NimBLEDevice::init(deviceName);
     NimBLEDevice::setMTU(BLE_MTU);
     NimBLEDevice::setSecurityAuth(true, false, true);  // bonding, no MITM, SC
@@ -69,7 +70,7 @@ void BleManager::init(const char* deviceName, const char* deviceId,
 
 void BleManager::startAdvertising() {
     NimBLEAdvertising* adv = NimBLEDevice::getAdvertising();
-    adv->setName(NimBLEDevice::getDeviceName());
+    adv->setName(_deviceName);
     adv->addServiceUUID(VENA_SERVICE_UUID);
     adv->enableScanResponse(true);
     adv->start();

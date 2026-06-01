@@ -26,6 +26,7 @@ public:
     void setProvisionCallback(ProvisionCallback cb);
 
 private:
+    char _deviceName[32] = {};
     NimBLEServer* _server = nullptr;
     NimBLECharacteristic* _deviceInfoChar = nullptr;
     NimBLECharacteristic* _telemetryChar = nullptr;
