@@ -214,6 +214,7 @@ class PairingNotifier extends _$PairingNotifier {
           );
       await _doClaim();
     } catch (e) {
+      debugPrint('[Pairing] submitProvisioning raw error: $e');
       state = state.copyWith(
         step: PairingStep.error,
         errorMessage: _friendlyError(e),
@@ -232,11 +233,14 @@ class PairingNotifier extends _$PairingNotifier {
 
     state = state.copyWith(step: PairingStep.claiming);
     try {
+      debugPrint('[Pairing] _doClaim: POST /devices/$deviceId/claim');
       await ref
           .read(deviceActionsProvider.notifier)
           .claimDevice(deviceId, pairingCode);
+      debugPrint('[Pairing] _doClaim: success');
       state = state.copyWith(step: PairingStep.naming);
     } catch (e) {
+      debugPrint('[Pairing] _doClaim raw error: $e');
       state = state.copyWith(
         step: PairingStep.error,
         errorMessage: _friendlyError(e),
