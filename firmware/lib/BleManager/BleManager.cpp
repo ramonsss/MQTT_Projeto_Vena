@@ -110,9 +110,8 @@ void BleManager::updateWifiStatus(bool connected, const char* ssid,
     String out;
     serializeJson(doc, out);
     _wifiStatusChar->setValue(out.c_str());
-    if (_clientCount > 0) {
-        _wifiStatusChar->notify();
-    }
+    // No notify — app polls this characteristic via READ; unsolicited notify
+    // on an unsubscribed CCCD can trigger a BLE disconnect (reason=531).
 }
 
 void BleManager::setProvisionCallback(ProvisionCallback cb) {
