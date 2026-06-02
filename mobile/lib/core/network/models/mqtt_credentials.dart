@@ -13,9 +13,9 @@ class MqttCredentials {
 
   factory MqttCredentials.fromJson(Map<String, dynamic> json) =>
       MqttCredentials(
-        token: json['token'] as String,
-        host: json['host'] as String,
-        port: json['port'] as int,
+        token: json['mqtt_token'] as String,
+        host: json['broker_host'] as String,
+        port: json['broker_port'] as int,
         expiresIn: json['expires_in'] as int,
       );
 }
