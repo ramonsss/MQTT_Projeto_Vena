@@ -266,7 +266,9 @@ void loop() {
                       pendingCreds.psk.length(),
                       pendingCreds.jwt.isEmpty() ? "none" : "present");
         WiFi.disconnect(true);
-        delay(50);
+        delay(500);  // allow radio to fully stop before restarting
+        WiFi.mode(WIFI_STA);
+        delay(100);
         WiFi.begin(pendingCreds.ssid.c_str(), pendingCreds.psk.c_str());
         if (pendingCreds.jwt.length() > 0) {
             mqtt.setJwt(pendingCreds.jwt);
