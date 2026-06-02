@@ -8,8 +8,10 @@ void BleManager::init(const char* deviceName, const char* deviceId,
                       const char* pairingCode, const char* fwVersion) {
     strncpy(_deviceName, deviceName, sizeof(_deviceName) - 1);
     NimBLEDevice::init(deviceName);
+    NimBLEDevice::deleteAllBonds();  // clear stale NVS bonds from previous firmware
     NimBLEDevice::setMTU(BLE_MTU);
-    NimBLEDevice::setSecurityAuth(true, false, true);  // bonding, no MITM, SC
+    NimBLEDevice::setSecurityAuth(false, false, false);  // no bonding — security handled by backend
+    NimBLEDevice::setSecurityIOCap(BLE_HS_IO_NO_INPUT_OUTPUT);
 
     _server = NimBLEDevice::createServer();
     _server->setCallbacks(new VenaServerCallbacks(*this));
@@ -54,10 +56,10 @@ void BleManager::init(const char* deviceName, const char* deviceId,
     );
     _provisionChar->setCallbacks(new ProvisionWriteCallbacks(*this));
 
-    // pairing_code (Read, encrypted — requires bonding)
+    // pairing_code (Read — security enforced by backend bcrypt + PAIRING_SECRET)
     _pairingCodeChar = service->createCharacteristic(
         CHAR_PAIRING_CODE_UUID,
-        NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::READ_ENC
+        NIMBLE_PROPERTY::READ
     );
     _pairingCodeChar->setValue(pairingCode);
 
@@ -108,9 +110,8 @@ void BleManager::updateWifiStatus(bool connected, const char* ssid,
     String out;
     serializeJson(doc, out);
     _wifiStatusChar->setValue(out.c_str());
-    if (_clientCount > 0) {
-        _wifiStatusChar->notify();
-    }
+    // No notify — app polls this characteristic via READ; unsolicited notify
+    // on an unsubscribed CCCD can trigger a BLE disconnect (reason=531).
 }
 
 void BleManager::setProvisionCallback(ProvisionCallback cb) {

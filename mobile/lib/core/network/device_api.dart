@@ -12,8 +12,19 @@ class DeviceApi {
   final Dio _dio;
 
   Future<List<DeviceDto>> listDevices() async {
-    final response = await _dio.get<List<dynamic>>('/devices');
-    return response.data!
+    final response = await _dio.get<dynamic>('/devices');
+    final data = response.data;
+    List<dynamic> items;
+    if (data is List) {
+      items = data;
+    } else if (data is Map && data.containsKey('items')) {
+      items = data['items'] as List<dynamic>;
+    } else if (data is Map && data.containsKey('devices')) {
+      items = data['devices'] as List<dynamic>;
+    } else {
+      throw Exception('GET /devices unexpected format: ${data.runtimeType} — $data');
+    }
+    return items
         .map((e) => DeviceDto.fromJson(e as Map<String, dynamic>))
         .toList();
   }

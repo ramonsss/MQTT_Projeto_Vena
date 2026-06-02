@@ -150,6 +150,10 @@ class BleService {
       return false;
     }
     try {
+      // Negotiate MTU — payload with JWT can exceed 500 bytes
+      final mtu = await _ble.requestMtu(deviceId: _connectedDeviceId!, mtu: 247);
+      debugPrint('[BLE] negotiated MTU: $mtu');
+
       final char = QualifiedCharacteristic(
         serviceId: Uuid.parse(BleUuids.serviceUuid),
         characteristicId: Uuid.parse(BleUuids.wifiProvisioningChar),
@@ -213,6 +217,14 @@ class BleService {
   // ── Private ───────────────────────────────────────────────────────────────
 
   Future<void> _onConnected(String bleDeviceId) async {
+    // Negotiate MTU early — provisioning payload can exceed 500 bytes
+    try {
+      final mtu = await _ble.requestMtu(deviceId: bleDeviceId, mtu: 247);
+      debugPrint('[BLE] MTU negotiated: $mtu');
+    } catch (e) {
+      debugPrint('[BLE] MTU negotiation failed (using default): $e');
+    }
+
     // Read device ID first
     await readDeviceId();
 

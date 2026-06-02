@@ -23,6 +23,7 @@ import '../../../design_system/components/connection_badge.dart';
 import '../../../design_system/components/metric_tile.dart';
 import '../../../design_system/tokens.dart';
 import '../../../design_system/typography.dart';
+import '../application/ble_auto_connect.dart';
 import '../application/live_telemetry_provider.dart';
 import 'widgets/big_metric.dart';
 import 'widgets/deviation_indicator.dart';
@@ -37,6 +38,8 @@ class DeviceDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final latestAsync = ref.watch(latestStateProvider(deviceId));
     final cacheAsync = ref.watch(recentCacheProvider(deviceId));
+    // Activate BLE auto-connect for this device. Disposed when screen is popped.
+    ref.watch(bleAutoConnectProvider(deviceId));
     final latest = latestAsync.valueOrNull;
     final isOnline = latest?.online ?? false;
     final source = ref.watch(connectionSourceProvider(deviceId));

@@ -14,6 +14,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/ble/ble_models.dart';
 import '../../../core/ble/ble_provider.dart';
 import '../../../core/db/app_database.dart';
+import '../../../core/network/device_api.dart';
 import '../../../core/sync/device_sync_service.dart';
 import '../../devices/application/device_actions_provider.dart';
 import 'provisioning_service.dart';
@@ -233,10 +234,11 @@ class PairingNotifier extends _$PairingNotifier {
 
     state = state.copyWith(step: PairingStep.claiming);
     try {
-      debugPrint('[Pairing] _doClaim: POST /devices/$deviceId/claim');
-      await ref
-          .read(deviceActionsProvider.notifier)
-          .claimDevice(deviceId, pairingCode);
+      debugPrint('[Pairing] _doClaim: POST /devices/$deviceId/claim (direct)');
+      // Direct HTTP call for immediate feedback instead of outbox
+      await ref.read(deviceApiProvider).claimDevice(deviceId, pairingCode);
+      debugPrint('[Pairing] _doClaim: claim ok, syncing device list');
+      await ref.read(deviceSyncServiceProvider).syncDeviceList();
       debugPrint('[Pairing] _doClaim: success');
       state = state.copyWith(step: PairingStep.naming);
     } catch (e) {
@@ -279,7 +281,8 @@ class PairingNotifier extends _$PairingNotifier {
     _scanSub?.cancel();
     _scanSub = null;
     ref.read(bleServiceProvider).stopScan();
-    unawaited(ref.read(bleServiceProvider).disconnectDevice());
+    // Do NOT disconnect BLE here — keep the connection alive so the
+    // device_detail_screen immediately receives telemetry notifications.
     state = const PairingState();
   }
 

@@ -60,15 +60,17 @@ class BleTelemetry {
   final double? pidOut;
 
   factory BleTelemetry.fromJson(String deviceId, Map<String, dynamic> json) {
+    // Firmware sends abbreviated keys: at/ah/dt/sp/po
+    // Fall back to full names for forward compatibility.
     return BleTelemetry(
       deviceId: deviceId,
-      ts: json['ts'] as int? ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      ambientT: (json['ambient_t'] as num?)?.toDouble(),
-      ambientH: (json['ambient_h'] as num?)?.toDouble(),
-      dissT: (json['diss_t'] as num?)?.toDouble(),
-      dissH: (json['diss_h'] as num?)?.toDouble(),
-      setpoint: (json['setpoint'] as num?)?.toDouble(),
-      pidOut: (json['pid_out'] as num?)?.toDouble(),
+      ts: json['ts'] as int? ?? DateTime.now().millisecondsSinceEpoch,
+      ambientT: (json['at'] as num? ?? json['ambient_t'] as num?)?.toDouble(),
+      ambientH: (json['ah'] as num? ?? json['ambient_h'] as num?)?.toDouble(),
+      dissT: (json['dt'] as num? ?? json['diss_t'] as num?)?.toDouble(),
+      dissH: (json['dh'] as num? ?? json['diss_h'] as num?)?.toDouble(),
+      setpoint: (json['sp'] as num? ?? json['setpoint'] as num?)?.toDouble(),
+      pidOut: (json['po'] as num? ?? json['pid_out'] as num?)?.toDouble(),
     );
   }
 }

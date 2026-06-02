@@ -16,7 +16,8 @@ class Settings(BaseSettings):
     database_url_direct: str = ""
 
     # MQTT
-    mqtt_host: str = "localhost"
+    mqtt_host: str = "localhost"          # internal broker hostname (used by worker)
+    mqtt_public_host: str = ""             # public hostname returned to app (defaults to mqtt_host)
     mqtt_port: int = 1883
 
     # Auth / JWT
