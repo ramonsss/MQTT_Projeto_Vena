@@ -11,5 +11,5 @@ Stream<BleTelemetry?> bleLiveTelemetry(
   BleLiveTelemetryRef ref,
   String deviceId,
 ) {
-  return ref.watch(bleTelemetryProvider.stream).where((t) => t.deviceId == deviceId);
+  return ref.watch(bleServiceProvider).onTelemetry.where((t) => t.deviceId == deviceId);
 }

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/auth/auth_provider.dart';
+import 'core/ble/ble_provider.dart';
 import 'core/mqtt/mqtt_lifecycle.dart';
 import 'core/mqtt/mqtt_message_handler.dart';
 import 'core/mqtt/mqtt_provider.dart';
@@ -48,6 +49,7 @@ Future<void> _postLoginSetup(WidgetRef ref) async {
   ref.read(outboxWorkerProvider);
   ref.read(mqttLifecycleProvider);
   ref.read(mqttMessageHandlerProvider);
+  ref.read(bleMessageHandlerProvider); // persiste BLE telemetry no Drift
 
   // Sincroniza lista de devices do backend (best-effort).
   try {
