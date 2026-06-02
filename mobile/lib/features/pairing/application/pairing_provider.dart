@@ -281,7 +281,8 @@ class PairingNotifier extends _$PairingNotifier {
     _scanSub?.cancel();
     _scanSub = null;
     ref.read(bleServiceProvider).stopScan();
-    unawaited(ref.read(bleServiceProvider).disconnectDevice());
+    // Do NOT disconnect BLE here — keep the connection alive so the
+    // device_detail_screen immediately receives telemetry notifications.
     state = const PairingState();
   }
 
