@@ -33,10 +33,11 @@ async def get_mqtt_credentials(
 
     token = create_mqtt_token(user, device_ids)
 
+    public_host = settings.mqtt_public_host or settings.mqtt_host
     return MqttCredentialsResponse(
         mqtt_token=token,
         expires_in=settings.mqtt_jwt_expire_minutes * 60,
-        broker_host=settings.mqtt_host,
+        broker_host=public_host,
         broker_port=settings.mqtt_port,
     )
 
