@@ -5,7 +5,7 @@ MqttPublisher::MqttPublisher(const char* wifiSsid, const char* wifiPass,
                              const char* mqttHost, uint16_t mqttPort)
     : _wifiSsid(wifiSsid), _wifiPass(wifiPass),
       _mqttHost(mqttHost), _mqttPort(mqttPort),
-      _mqtt(_wifiClient) {}
+      _mqtt(_netClient) {}
 
 void MqttPublisher::begin(const char* deviceId) {
     _deviceId = deviceId;
@@ -18,6 +18,10 @@ void MqttPublisher::begin(const char* deviceId) {
     WiFi.setAutoReconnect(true);
     WiFi.begin(_wifiSsid, _wifiPass);
     _wifiNextAttemptMs = millis() + _wifiBackoffMs;
+
+#if MQTT_USE_TLS
+    _netClient.setInsecure();  // accept any cert (Let's Encrypt validated by default CA)
+#endif
 
     _mqtt.setServer(_mqttHost, _mqttPort);
     // 128 B default não cabe payload de telemetria com folga.
@@ -106,6 +110,8 @@ void MqttPublisher::ensureMqtt() {
         _mqtt.subscribe(_topicCmd.c_str(), 1);
         _mqttBackoffMs = 1000;
     } else {
+        Serial.printf("[MQTT] connect failed, rc=%d, backoff=%lums\n",
+                      _mqtt.state(), _mqttBackoffMs);
         _mqttBackoffMs = min(_mqttBackoffMs * 2, BACKOFF_MAX_MS);
         _mqttNextAttemptMs = now + _mqttBackoffMs;
     }
