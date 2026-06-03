@@ -135,7 +135,7 @@ class MqttService {
     // Enable TLS when connecting on port 8883
     if (creds.port == 8883) {
       client.secure = true;
-      client.onBadCertificate = (_) => false; // reject invalid certs
+      client.onBadCertificate = (Object _) => false; // reject invalid certs
     }
 
     _client = client;
