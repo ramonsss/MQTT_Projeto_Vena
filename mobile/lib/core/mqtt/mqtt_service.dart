@@ -132,6 +132,12 @@ class MqttService {
         .startClean()
         .withWillQos(MqttQos.atLeastOnce);
 
+    // Enable TLS when connecting on port 8883
+    if (creds.port == 8883) {
+      client.secure = true;
+      client.onBadCertificate = (_) => false; // reject invalid certs
+    }
+
     _client = client;
     _emitState(VenaMqttStatus.reconnecting);
 
