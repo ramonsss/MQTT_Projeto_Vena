@@ -62,6 +62,7 @@ Future<void> _postLoginSetup(WidgetRef ref) async {
   // Subscribe to MQTT topics for all local devices.
   final db = ref.read(appDatabaseProvider);
   final localDevices = await db.deviceDao.getAllDeviceIds();
+  debugPrint('[PostLogin] subscribing MQTT for devices: $localDevices');
   final mqttService = ref.read(mqttServiceProvider);
   mqttService.subscribe(localDevices);
 
