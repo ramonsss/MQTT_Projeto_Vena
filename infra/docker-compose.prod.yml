@@ -58,7 +58,7 @@ services:
         chmod 644 "$$CERT_DST/server.crt" "$$CERT_DST/server.key"
         exec mosquitto -c /etc/mosquitto/mosquitto.conf
     ports:
-      - "1883:1883"              # MVP: exposto externamente sem TLS
+      - "127.0.0.1:1883:1883"   # interno — FastAPI worker acessa via bridge
       - "8883:8883"              # externo — MQTT/TLS para dispositivos e app
     volumes:
       - ./mosquitto/mosquitto.prod.conf:/etc/mosquitto/mosquitto.conf:ro

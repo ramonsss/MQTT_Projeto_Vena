@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     mqtt_host: str = "localhost"          # internal broker hostname (used by worker)
     mqtt_public_host: str = ""             # public hostname returned to app (defaults to mqtt_host)
     mqtt_port: int = 1883
+    mqtt_public_port: int = 0              # public port returned to app (0 = same as mqtt_port)
 
     # Auth / JWT
     jwt_secret: str = "change-me-in-production"
