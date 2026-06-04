@@ -58,7 +58,7 @@ class LoginScreen extends ConsumerWidget {
                       const VenaLogo(width: 240),
                       const SizedBox(height: VenaSpacing.md),
                       Text(
-                        'Monitor. Controle. Cultive.',
+                        'Monitore. Controle. Cultive.',
                         style: VenaTypography.bodyMedium.copyWith(
                           color: VenaColors.textSecondary,
                           letterSpacing: 0.2,
