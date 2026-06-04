@@ -25,7 +25,7 @@ class SplashScreen extends StatelessWidget {
             VenaLogo(width: logoWidth),
             const SizedBox(height: 20),
             Text(
-              'Monitor. Controle. Cultive.',
+              'Monitore. Controle. Cultive.',
               style: GoogleFonts.inter(
                 fontSize: 18,
                 color: VenaColors.textSecondary,

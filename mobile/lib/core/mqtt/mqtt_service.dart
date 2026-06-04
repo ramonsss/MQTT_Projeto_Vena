@@ -135,7 +135,7 @@ class MqttService {
     // Enable TLS when connecting on port 8883
     if (creds.port == 8883) {
       client.secure = true;
-      client.onBadCertificate = (_) => false; // reject invalid certs
+      client.onBadCertificate = (Object _) => false; // reject invalid certs
     }
 
     _client = client;
@@ -148,7 +148,7 @@ class MqttService {
   void _onConnected() {
     _reconnectAttempts = 0;
     _emitState(VenaMqttStatus.connected);
-    debugPrint('[MQTT] CONNACK OK');
+    debugPrint('[MQTT] CONNACK OK — subscribing to ${_deviceIds.length} devices: $_deviceIds');
 
     _doSubscribe(_client!, _deviceIds);
 
@@ -157,6 +157,7 @@ class MqttService {
       for (final event in events) {
         final raw = (event.payload as MqttPublishMessage).payload.message;
         final payload = MqttPublishPayload.bytesToStringAsString(raw);
+        debugPrint('[MQTT] msg on ${event.topic}: ${payload.length > 100 ? payload.substring(0, 100) : payload}');
         if (!_messageController.isClosed) {
           _messageController
               .add(MqttTopicMessage(topic: event.topic, payload: payload));

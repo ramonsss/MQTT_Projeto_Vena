@@ -12,6 +12,12 @@ class DeviceDao extends DatabaseAccessor<AppDatabase> with _$DeviceDaoMixin {
   // Stream that re-emits whenever the devices table changes.
   Stream<List<Device>> watchAllDevices() => select(devices).watch();
 
+  // Returns all device IDs currently stored locally.
+  Future<List<String>> getAllDeviceIds() async {
+    final rows = await select(devices).get();
+    return rows.map((d) => d.deviceId).toList();
+  }
+
   // Insert or replace a device row.
   Future<void> upsertDevice(DevicesCompanion entry) =>
       into(devices).insertOnConflictUpdate(entry);

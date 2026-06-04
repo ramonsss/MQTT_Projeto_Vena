@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/auth/auth_provider.dart';
 import 'core/ble/ble_provider.dart';
+import 'core/db/app_database.dart';
 import 'core/mqtt/mqtt_lifecycle.dart';
 import 'core/mqtt/mqtt_message_handler.dart';
 import 'core/mqtt/mqtt_provider.dart';
@@ -58,7 +59,14 @@ Future<void> _postLoginSetup(WidgetRef ref) async {
     debugPrint('[PostLogin] sync falhou (será retentado no pull-to-refresh): $e');
   }
 
+  // Subscribe to MQTT topics for all local devices.
+  final db = ref.read(appDatabaseProvider);
+  final localDevices = await db.deviceDao.getAllDeviceIds();
+  debugPrint('[PostLogin] subscribing MQTT for devices: $localDevices');
+  final mqttService = ref.read(mqttServiceProvider);
+  mqttService.subscribe(localDevices);
+
   // Conecta ao broker MQTT (reconexão automática gerenciada pelo MqttService).
-  unawaited(ref.read(mqttServiceProvider).connect());
+  unawaited(mqttService.connect());
 }
 

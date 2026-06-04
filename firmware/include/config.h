@@ -100,6 +100,11 @@
 #ifndef MQTT_USE_AUTH
 #define MQTT_USE_AUTH 0
 #endif
+// MQTT over TLS (port 8883). Set to 1 for production.
+//   build_flags = ... -DMQTT_USE_TLS=1 -DMQTT_PORT=8883
+#ifndef MQTT_USE_TLS
+#define MQTT_USE_TLS 0
+#endif
 // NVS key used to persist the device JWT across reboots.
 #ifndef MQTT_NVS_JWT_KEY
 #define MQTT_NVS_JWT_KEY "device_jwt"

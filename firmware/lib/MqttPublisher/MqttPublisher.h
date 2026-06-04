@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
+#include <WiFiClientSecure.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include <functional>
@@ -43,7 +44,11 @@ private:
 
     String _jwtCredential;
 
-    WiFiClient _wifiClient;
+#if MQTT_USE_TLS
+    WiFiClientSecure _netClient;
+#else
+    WiFiClient _netClient;
+#endif
     PubSubClient _mqtt;
     CommandHandler _cmdHandler;
 

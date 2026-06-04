@@ -359,7 +359,11 @@ void loop() {
         lastTelemetryMs = now;
         const String payload = buildTelemetryJson();
         if (mqtt.isConnected() && buffer.empty()) {
-            if (!mqtt.publishTelemetry(payload)) buffer.push(payload);
+            if (mqtt.publishTelemetry(payload)) {
+                Serial.printf("[MQTT] telemetry sent (seq=%lu)\n", seqCounter - 1);
+            } else {
+                buffer.push(payload);
+            }
         } else {
             buffer.push(payload);
         }
